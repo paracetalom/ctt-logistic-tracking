@@ -1,119 +1,101 @@
-﻿import os
-import sqlite3
-from datetime import datetime
-from typing import Optional
+import os
+import time
+import pymysql
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-app = FastAPI(title="CTT Logistic Tracking API", version="2.0.0")
+app = FastAPI(title="CTT Logistic Tracking API")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-DB_PATH = os.getenv("DB_PATH", "ctt_logistic.db")
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
+DB_HOST = os.getenv("DB_HOST", "db")
+DB_USER = os.getenv("DB_USER", "ctt_user")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "ctt_pass123")
+DB_NAME = os.getenv("DB_NAME", "ctt_logistic")
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return pymysql.connect(
+        host=DB_HOST,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        database=DB_NAME,
+        cursorclass=pymysql.cursors.DictCursor,
+        autocommit=True
+    )
 
-
+@app.on_event("startup")
 def init_db():
-    with get_db() as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS shipments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                tracking_no TEXT UNIQUE NOT NULL,
-                sender TEXT NOT NULL,
-                receiver TEXT NOT NULL,
-                destination TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'รับเข้าระบบ',
-                updated_at TEXT NOT NULL
-            )
-        """)
-        conn.commit()
-
-
-init_db()
-
+    for _ in range(15):
+        try:
+            conn = get_db()
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS shipments (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        tracking_no VARCHAR(50) UNIQUE NOT NULL,
+                        sender VARCHAR(100) NOT NULL,
+                        receiver VARCHAR(100) NOT NULL,
+                        destination VARCHAR(100) NOT NULL,
+                        status VARCHAR(50) DEFAULT 'รับเข้าระบบ',
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    )
+                """)
+            conn.close()
+            break
+        except Exception:
+            time.sleep(2)
 
 class ShipmentCreate(BaseModel):
     tracking_no: str
     sender: str
     receiver: str
     destination: str
-    status: Optional[str] = "รับเข้าระบบ"
-
 
 class StatusUpdate(BaseModel):
     status: str
 
-
 @app.get("/")
-def serve_frontend():
-    return FileResponse(os.path.join(BASE_DIR, "index.html"))
-
+def serve_ui():
+    return FileResponse("index.html")
 
 @app.get("/api/shipments")
-def list_shipments(q: Optional[str] = None):
-    with get_db() as conn:
-        if q:
-            keyword = f"%{q}%"
-            rows = conn.execute(
-                """SELECT * FROM shipments 
-                   WHERE tracking_no LIKE ? OR receiver LIKE ? OR destination LIKE ?
-                   ORDER BY id DESC""",
-                (keyword, keyword, keyword),
-            ).fetchall()
-        else:
-            rows = conn.execute("SELECT * FROM shipments ORDER BY id DESC").fetchall()
-    return [dict(row) for row in rows]
-
+def list_shipments():
+    conn = get_db()
+    with conn.cursor() as cursor:
+        cursor.execute("SELECT * FROM shipments ORDER BY updated_at DESC")
+        rows = cursor.fetchall()
+    conn.close()
+    return rows
 
 @app.post("/api/shipments")
 def create_shipment(item: ShipmentCreate):
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    conn = get_db()
     try:
-        with get_db() as conn:
-            conn.execute(
-                """INSERT INTO shipments (tracking_no, sender, receiver, destination, status, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?)""",
-                (item.tracking_no.strip().upper(), item.sender, item.receiver, item.destination, item.status, now),
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "INSERT INTO shipments (tracking_no, sender, receiver, destination) VALUES (%s, %s, %s, %s)",
+                (item.tracking_no.upper(), item.sender, item.receiver, item.destination)
             )
-            conn.commit()
-        return {"message": "บันทึกข้อมูลพัสดุสำเร็จ", "tracking_no": item.tracking_no.upper()}
-    except sqlite3.IntegrityError:
+    except pymysql.err.IntegrityError:
+        conn.close()
         raise HTTPException(status_code=400, detail="เลขพัสดุนี้มีอยู่ในระบบแล้ว")
-
+    conn.close()
+    return {"message": "บันทึกสำเร็จ"}
 
 @app.put("/api/shipments/{tracking_no}")
-def update_status(tracking_no: str, data: StatusUpdate):
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    with get_db() as conn:
-        cur = conn.execute(
-            "UPDATE shipments SET status = ?, updated_at = ? WHERE tracking_no = ?",
-            (data.status, now, tracking_no.upper()),
+def update_status(tracking_no: str, item: StatusUpdate):
+    conn = get_db()
+    with conn.cursor() as cursor:
+        cursor.execute(
+            "UPDATE shipments SET status = %s WHERE tracking_no = %s",
+            (item.status, tracking_no.upper())
         )
-        conn.commit()
-        if cur.rowcount == 0:
-            raise HTTPException(status_code=404, detail="ไม่พบเลขพัสดุในระบบ")
-    return {"message": "อัปเดตสถานะเรียบร้อย"}
-
+    conn.close()
+    return {"message": "อัปเดตสถานะสำเร็จ"}
 
 @app.delete("/api/shipments/{tracking_no}")
 def delete_shipment(tracking_no: str):
-    with get_db() as conn:
-        cur = conn.execute("DELETE FROM shipments WHERE tracking_no = ?", (tracking_no.upper(),))
-        conn.commit()
-        if cur.rowcount == 0:
-            raise HTTPException(status_code=404, detail="ไม่พบเลขพัสดุในระบบ")
-    return {"message": "ลบรายการเรียบร้อย"}
+    conn = get_db()
+    with conn.cursor() as cursor:
+        cursor.execute("DELETE FROM shipments WHERE tracking_no = %s", (tracking_no.upper(),))
+    conn.close()
+    return {"message": "ลบรายการสำเร็จ"}
