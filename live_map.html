@@ -5,18 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CTT Command Center - Live Fleet Telemetry</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Prompt', sans-serif; background-color: #060b19; color: #e2e8f0; overflow-x: hidden; }
+        body { font-family: 'Prompt', sans-serif; background-color: #050914; color: #e2e8f0; overflow-x: hidden; }
         .mono { font-family: 'JetBrains Mono', monospace; }
-        #map { height: calc(100vh - 140px); width: 100%; border-radius: 1rem; z-index: 1; }
         .glass-panel {
-            background: rgba(15, 23, 42, 0.78);
+            background: rgba(13, 21, 38, 0.85);
             backdrop-filter: blur(12px);
             border: 1px solid rgba(56, 189, 248, 0.25);
-            box-shadow: 0 0 25px rgba(2, 132, 199, 0.15);
+            box-shadow: 0 0 30px rgba(2, 132, 199, 0.12);
+        }
+        .map-grid {
+            background-image: 
+                linear-gradient(to right, rgba(56, 189, 248, 0.07) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(56, 189, 248, 0.07) 1px, transparent 1px);
+            background-size: 36px 36px;
         }
         .pulse-dot {
             width: 10px; height: 10px; border-radius: 50%;
@@ -29,11 +32,12 @@
             70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
         }
-        .truck-marker {
-            background: #f59e0b; color: #090d16; font-weight: bold;
-            border: 2px solid #fff; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 0 15px #f59e0b; font-size: 14px;
+        @keyframes dashFlow {
+            to { stroke-dashoffset: -24; }
+        }
+        .route-active {
+            stroke-dasharray: 6, 6;
+            animation: dashFlow 0.8s linear infinite;
         }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
@@ -41,7 +45,7 @@
 </head>
 <body class="min-h-screen flex flex-col">
     <!-- Top Command Header -->
-    <header class="border-b border-slate-800/80 bg-slate-950/90 px-6 py-3 flex flex-wrap justify-between items-center gap-4">
+    <header class="border-b border-slate-800/80 bg-slate-950/95 px-6 py-3 flex flex-wrap justify-between items-center gap-4">
         <div class="flex items-center space-x-4">
             <div class="bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 font-black px-3.5 py-1.5 rounded-lg text-xl tracking-wider shadow-lg shadow-amber-500/20">
                 CTT
@@ -69,13 +73,59 @@
     </header>
 
     <!-- Main Workspace -->
-    <main class="flex-grow p-4 grid grid-cols-1 lg:grid-cols-4 gap-4 relative">
-        <!-- Left Map Area (3 Columns) -->
-        <div class="lg:col-span-3 relative">
-            <div id="map" class="border border-slate-800 shadow-2xl"></div>
+    <main class="flex-grow p-4 grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <!-- Left Interactive Thailand Radar Map (3 Columns) -->
+        <div class="lg:col-span-3 relative rounded-2xl border border-slate-800 bg-[#070d1f] map-grid overflow-hidden flex flex-col justify-between min-h-[580px]">
+            <!-- Top Radar Overlay Info -->
+            <div class="p-4 flex justify-between items-start z-10 pointer-events-none">
+                <div class="glass-panel px-3.5 py-2 rounded-xl text-xs mono">
+                    <p class="text-sky-400 font-bold">SECTOR: THAILAND NETWORK</p>
+                    <p class="text-slate-400 text-[11px] mt-0.5">HUB ORIGIN: NAKHON PATHOM (13.81°N, 100.06°E)</p>
+                </div>
+                <div class="glass-panel px-3.5 py-2 rounded-xl text-[11px] mono space-y-1">
+                    <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span> กำลังจัดส่ง (Moving Fleet)</div>
+                    <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span> จัดส่งสำเร็จ (Delivered)</div>
+                    <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-sky-400 inline-block"></span> รับเข้าระบบ (Hub Pending)</div>
+                </div>
+            </div>
 
-            <!-- Floating KPI Overlay on Map -->
-            <div class="absolute bottom-5 left-5 right-5 z-[500] grid grid-cols-2 sm:grid-cols-4 gap-3 pointer-events-none">
+            <!-- Thailand Vector Map & Live Fleet SVG -->
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+                <svg id="thailand-svg" viewBox="0 0 500 720" class="h-full max-h-[640px] w-auto drop-shadow-[0_0_25px_rgba(14,165,233,0.2)]">
+                    <defs>
+                        <radialGradient id="hubGlow" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.6"/>
+                            <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+                        </radialGradient>
+                    </defs>
+
+                    <!-- Stylized Thailand Silhouette -->
+                    <path d="M165,45 L205,40 L235,70 L225,115 L255,140 L335,145 L385,175 L395,225 L360,265 L285,270 L270,315 L295,355 L265,380 L215,355 L195,385 L175,455 L195,525 L235,575 L265,610 L245,635 L195,610 L165,555 L145,485 L155,410 L140,335 L120,275 L135,205 L125,135 L145,85 Z"
+                          fill="#0f172a" stroke="#1e3a8a" stroke-width="2.5" />
+
+                    <!-- Grid Radar Rings around Hub (Nakhon Pathom: 205, 325) -->
+                    <circle cx="205" cy="325" r="80" fill="none" stroke="rgba(56,189,248,0.12)" stroke-dasharray="4,4" />
+                    <circle cx="205" cy="325" r="170" fill="none" stroke="rgba(56,189,248,0.10)" stroke-dasharray="4,4" />
+                    <circle cx="205" cy="325" r="260" fill="none" stroke="rgba(56,189,248,0.08)" stroke-dasharray="4,4" />
+
+                    <!-- Dynamic Routes Layer -->
+                    <g id="routes-layer"></g>
+
+                    <!-- Province Nodes Layer -->
+                    <g id="nodes-layer"></g>
+
+                    <!-- Central Hub Marker (Nakhon Pathom) -->
+                    <circle cx="205" cy="325" r="24" fill="url(#hubGlow)" />
+                    <circle cx="205" cy="325" r="6" fill="#38bdf8" stroke="#ffffff" stroke-width="2" />
+                    <text x="145" y="312" fill="#38bdf8" font-size="11" font-weight="bold" class="mono">CTT HUB</text>
+
+                    <!-- Moving Trucks Layer -->
+                    <g id="trucks-layer"></g>
+                </svg>
+            </div>
+
+            <!-- Floating KPI Overlay on Bottom -->
+            <div class="p-4 z-10 grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div class="glass-panel p-3.5 rounded-xl">
                     <p class="text-[11px] text-sky-300 mono">TOTAL SHIPMENTS</p>
                     <p id="kpi-total" class="text-2xl font-bold text-white mt-0.5 mono">0</p>
@@ -96,13 +146,13 @@
         </div>
 
         <!-- Right Telemetry Feed (1 Column) -->
-        <div class="glass-panel rounded-2xl p-4 flex flex-col justify-between h-[calc(100vh-140px)]">
+        <div class="glass-panel rounded-2xl p-4 flex flex-col justify-between h-[640px]">
             <div>
                 <div class="flex justify-between items-center border-b border-slate-700/80 pb-3 mb-3">
                     <h2 class="text-sm font-bold text-sky-400 tracking-wider mono">📡 LIVE FLEET FEED</h2>
-                    <span class="text-[10px] text-slate-400 mono">AUTO-SYNC</span>
+                    <span class="text-[10px] text-emerald-400 mono">● STREAMING</span>
                 </div>
-                <div id="fleet-list" class="space-y-2.5 overflow-y-auto max-h-[calc(100vh-260px)] pr-1">
+                <div id="fleet-list" class="space-y-2.5 overflow-y-auto max-h-[510px] pr-1">
                     <!-- Dynamic items -->
                 </div>
             </div>
@@ -115,32 +165,142 @@
     </main>
 
     <script>
-        // Update Clock
-        setInterval(() => {
+        // 1. Live Clock
+        function updateClock() {
             document.getElementById('clock').innerText = new Date().toLocaleTimeString('th-TH');
-        }, 1000);
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
 
-        // Hub Coordinate (Nakhon Pathom / Bangkok Metro)
-        const HUB = [13.7563, 100.3200];
-
-        // Province Coordinates Dictionary
+        // 2. Province Coordinates on SVG Canvas (Hub = [205, 325])
+        const HUB = { x: 205, y: 325 };
         const PROVINCES = {
-            "กรุงเทพฯ": [13.7563, 100.5018],
-            "นครปฐม": [13.8199, 100.0622],
-            "ชลบุรี": [13.3611, 100.9847],
-            "เชียงใหม่": [18.7883, 98.9853],
-            "ขอนแก่น": [16.4322, 102.8236],
-            "ภูเก็ต": [7.8804, 98.3923],
-            "นครราชสีมา": [14.9799, 102.0978],
-            "สงขลา": [7.1897, 100.5954]
+            "เชียงใหม่": { x: 160, y: 95 },
+            "ขอนแก่น": { x: 305, y: 195 },
+            "นครราชสีมา": { x: 275, y: 260 },
+            "กรุงเทพฯ": { x: 222, y: 332 },
+            "นครปฐม": { x: 195, y: 325 },
+            "ชลบุรี": { x: 252, y: 358 },
+            "ภูเก็ต": { x: 162, y: 545 },
+            "สงขลา": { x: 225, y: 605 }
         };
 
-        // Initialize Dark Map
-        const map = L.map
+        let activeTrucks = [];
 
-# 1. เพิ่ม Route /live-map ใน main.py
-grep -q '"/live-map"' main.py || cat << 'EOF' >> main.py
+        async function initCommandCenter() {
+            try {
+                const res = await fetch('/api/shipments');
+                const shipments = await res.json();
 
-@app.get("/live-map")
-async def live_command_center():
-    return FileResponse("live_map.html")
+                document.getElementById('kpi-total').innerText = shipments.length;
+                const transit = shipments.filter(s => s.status === 'กำลังจัดส่ง');
+                const done = shipments.filter(s => s.status === 'จัดส่งสำเร็จ');
+                document.getElementById('kpi-transit').innerText = transit.length;
+                document.getElementById('kpi-done').innerText = done.length;
+
+                // Render Right Feed
+                const feed = document.getElementById('fleet-list');
+                feed.innerHTML = shipments.slice(0, 20).map(s => {
+                    const isMoving = s.status === 'กำลังจัดส่ง';
+                    const badgeClass = isMoving ? 'text-amber-400 border-amber-500/40 bg-amber-950/50' :
+                                       s.status === 'จัดส่งสำเร็จ' ? 'text-emerald-400 border-emerald-500/40 bg-emerald-950/50' :
+                                       'text-sky-400 border-sky-500/40 bg-sky-950/50';
+                    return `
+                        <div class="bg-slate-900/90 border border-slate-800 hover:border-sky-500/50 p-3 rounded-xl transition">
+                            <div class="flex justify-between items-center">
+                                <span class="mono font-bold text-xs text-white">${s.tracking_no}</span>
+                                <span class="text-[10px] px-2 py-0.5 rounded border ${badgeClass}">${s.status}</span>
+                            </div>
+                            <p class="text-xs text-slate-300 mt-1.5">ปลายทาง: <span class="text-sky-300 font-medium">${s.destination}</span></p>
+                            <div class="flex justify-between items-center mt-1 text-[10px] text-slate-500 mono">
+                                <span>ผู้รับ: ${s.receiver}</span>
+                                <span>${isMoving ? 'SPEED: ' + (68 + Math.floor(Math.random()*18)) + ' km/h' : 'AT STATION'}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Draw Routes & Nodes
+                const routesLayer = document.getElementById('routes-layer');
+                const nodesLayer = document.getElementById('nodes-layer');
+                const trucksLayer = document.getElementById('trucks-layer');
+
+                const drawnProvinces = new Set();
+
+                shipments.forEach((s, idx) => {
+                    const dest = PROVINCES[s.destination] || { x: 240, y: 290 };
+                    const isMoving = s.status === 'กำลังจัดส่ง';
+                    const color = isMoving ? '#f59e0b' : (s.status === 'จัดส่งสำเร็จ' ? '#10b981' : '#38bdf8');
+
+                    // Draw Line
+                    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    line.setAttribute("x1", HUB.x);
+                    line.setAttribute("y1", HUB.y);
+                    line.setAttribute("x2", dest.x);
+                    line.setAttribute("y2", dest.y);
+                    line.setAttribute("stroke", color);
+                    line.setAttribute("stroke-width", isMoving ? "2.2" : "1");
+                    line.setAttribute("stroke-opacity", isMoving ? "0.85" : "0.35");
+                    if (isMoving) line.setAttribute("class", "route-active");
+                    routesLayer.appendChild(line);
+
+                    // Draw Province Dot + Label once per province
+                    if (!drawnProvinces.has(s.destination)) {
+                        drawnProvinces.add(s.destination);
+                        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                        circle.setAttribute("cx", dest.x);
+                        circle.setAttribute("cy", dest.y);
+                        circle.setAttribute("r", "4.5");
+                        circle.setAttribute("fill", color);
+                        nodesLayer.appendChild(circle);
+
+                        const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                        label.setAttribute("x", dest.x + 8);
+                        label.setAttribute("y", dest.y + 4);
+                        label.setAttribute("fill", "#cbd5e1");
+                        label.setAttribute("font-size", "11");
+                        label.textContent = s.destination;
+                        nodesLayer.appendChild(label);
+                    }
+
+                    // Spawn Moving Truck for 'กำลังจัดส่ง'
+                    if (isMoving) {
+                        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                        const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                        dot.setAttribute("r", "6");
+                        dot.setAttribute("fill", "#f59e0b");
+                        dot.setAttribute("stroke", "#ffffff");
+                        dot.setAttribute("stroke-width", "1.5");
+                        g.appendChild(dot);
+                        trucksLayer.appendChild(g);
+
+                        activeTrucks.push({
+                            el: g,
+                            start: HUB,
+                            end: dest,
+                            progress: (idx * 0.19) % 1,
+                            speed: 0.003 + (Math.random() * 0.002)
+                        });
+                    }
+                });
+
+                // Animate Moving Trucks
+                setInterval(() => {
+                    activeTrucks.forEach(t => {
+                        t.progress += t.speed;
+                        if (t.progress > 1) t.progress = 0;
+                        const cx = t.start.x + (t.end.x - t.start.x) * t.progress;
+                        const cy = t.start.y + (t.end.y - t.start.y) * t.progress;
+                        t.el.setAttribute("transform", `translate(${cx}, ${cy})`);
+                    });
+                }, 40);
+
+            } catch (err) {
+                console.error("Telemetry Error:", err);
+            }
+        }
+
+        initCommandCenter();
+    </script>
+</body>
+</html>
