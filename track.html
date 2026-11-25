@@ -3,23 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CTT Logistics — ตรวจสอบสถานะพัสดุ</title>
+    <title>CTT LOGISTICS — ตรวจสอบสถานะพัสดุ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Geist+Mono:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'IBM Plex Sans Thai', sans-serif; background-color: #F7F6F2; color: #181715; }
+        body { font-family: 'IBM Plex Sans Thai', sans-serif; background-color: #F4F6F9; color: #0F172A; }
         .mono { font-family: 'Geist Mono', monospace; font-variant-numeric: tabular-nums; }
         h1, h2 { text-wrap: balance; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
-    <header class="bg-white border-b border-[#E2DFD7]">
-        <div class="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
-            <div class="flex items-center gap-2.5">
-                <span class="bg-[#181715] text-white font-bold px-2.5 py-1 rounded-md text-xs tracking-wider mono">CTT</span>
-                <span class="font-semibold text-sm text-[#181715]">Logistics Tracking</span>
-            </div>
-            <a href="/" class="text-xs font-medium text-[#57534E] hover:text-[#181715] transition">
+    <header class="bg-white border-b border-slate-200">
+        <div class="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
+            <a href="/track" class="flex items-center">
+                <svg class="h-8 w-auto" viewBox="0 0 360 95" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M10 32 L44 10 L44 26 L26 38 L26 58 L44 47 L44 65 L10 87 Z" fill="#DC0000"/>
+                    <path d="M44 47 L94 14 L94 31 L77 42 L77 87 L61 87 L61 53 L44 65 Z" fill="#003399"/>
+                    <path d="M77 56 L142 14 L142 32 L123 44 L123 87 L106 87 L106 55 L77 74 Z" fill="#003399"/>
+                    <path d="M168 26 H192 V34 H178 V41 H192 V49 H168 V26 Z" fill="#003399"/>
+                    <path d="M200 26 H226 V34 H218 V49 H208 V34 H200 V26 Z" fill="#003399"/>
+                    <path d="M234 26 H260 V34 H252 V49 H242 V34 H234 V26 Z" fill="#003399"/>
+                    <text x="167" y="77" fill="#003399" font-family="'Geist Mono', monospace" font-weight="800" font-size="25" letter-spacing="3.5">LOGISTICS</text>
+                </svg>
+            </a>
+            <a href="/" class="text-xs font-semibold text-[#003399] hover:text-[#002266] transition">
                 ระบบจัดการเจ้าหน้าที่ →
             </a>
         </div>
@@ -27,62 +34,58 @@
 
     <main class="max-w-3xl w-full mx-auto px-4 py-10 flex-grow">
         <div class="mb-6">
-            <h1 class="text-2xl font-bold text-[#181715]">ตรวจสอบสถานะการจัดส่งพัสดุ</h1>
-            <p class="text-sm text-[#57534E] mt-1">กรอกหมายเลขพัสดุ 11 หลัก (เช่น CTT2026xxxx) เพื่อดูความคืบหน้าล่าสุด</p>
+            <h1 class="text-2xl font-bold text-slate-900">ตรวจสอบสถานะการจัดส่งพัสดุ</h1>
+            <p class="text-sm text-slate-600 mt-1">กรอกหมายเลขพัสดุ 11 หลัก (เช่น CTT2026xxxx) เพื่อดูความคืบหน้าล่าสุด</p>
         </div>
 
-        <!-- Search Box (Concentric Radius: outer 12px, padding 6px, inner 6px) -->
-        <form id="track-form" class="bg-white border border-[#D6D3CB] rounded-xl p-1.5 flex gap-2 shadow-xs">
+        <form id="track-form" class="bg-white border border-slate-300 rounded-xl p-1.5 flex gap-2">
             <input type="text" id="tracking-input" required placeholder="ระบุหมายเลขพัสดุ..."
                    class="flex-grow px-3.5 py-2.5 text-sm mono uppercase bg-transparent focus:outline-none">
-            <button type="submit" class="bg-[#D97706] hover:bg-[#B45309] text-white font-semibold text-sm px-6 py-2.5 rounded-md transition">
+            <button type="submit" class="bg-[#003399] hover:bg-[#002266] text-white font-semibold text-sm px-6 py-2.5 rounded-md transition">
                 ค้นหาพัสดุ
             </button>
         </form>
 
-        <!-- Error Alert -->
-        <div id="error-box" class="hidden mt-5 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl text-sm">
+        <div id="error-box" class="hidden mt-5 bg-red-50 border border-red-200 text-[#DC0000] px-4 py-3 rounded-xl text-sm">
             ไม่พบข้อมูลหมายเลขพัสดุนี้ในระบบ กรุณาตรวจสอบความถูกต้องอีกครั้ง
         </div>
 
-        <!-- Tracking Result Card -->
-        <div id="result-box" class="hidden mt-6 bg-white border border-[#E2DFD7] rounded-xl overflow-hidden">
-            <div class="p-5 sm:p-6 border-b border-[#E2DFD7] bg-[#FAF9F6] flex flex-wrap justify-between items-center gap-4">
+        <div id="result-box" class="hidden mt-6 bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div class="p-5 sm:p-6 border-b border-slate-200 bg-slate-50/70 flex flex-wrap justify-between items-center gap-4">
                 <div>
-                    <p class="text-xs text-[#57534E]">หมายเลขติดตามพัสดุ</p>
+                    <p class="text-xs text-slate-500">หมายเลขติดตามพัสดุ</p>
                     <div class="flex items-center gap-2 mt-0.5">
-                        <h2 id="res-tracking" class="text-xl font-bold mono text-[#181715]"></h2>
-                        <button onclick="copyTracking()" id="copy-btn" class="text-[11px] px-2 py-0.5 rounded border border-[#D6D3CB] bg-white hover:bg-[#F7F6F2] text-[#57534E] transition">คัดลอก</button>
+                        <h2 id="res-tracking" class="text-xl font-bold mono text-[#003399]"></h2>
+                        <button onclick="copyTracking()" id="copy-btn" class="text-[11px] px-2 py-0.5 rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-600 transition">คัดลอก</button>
                     </div>
                 </div>
                 <span id="res-badge" class="text-xs font-semibold px-3 py-1 rounded-md border"></span>
             </div>
 
-            <div class="p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-3 gap-4 border-b border-[#E2DFD7] text-sm">
+            <div class="p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-3 gap-4 border-b border-slate-200 text-sm">
                 <div>
-                    <p class="text-xs text-[#57534E]">ต้นทาง / ผู้ส่ง</p>
-                    <p id="res-sender" class="font-semibold text-[#181715] mt-0.5"></p>
+                    <p class="text-xs text-slate-500">ต้นทาง / ผู้ส่ง</p>
+                    <p id="res-sender" class="font-semibold text-slate-900 mt-0.5"></p>
                 </div>
                 <div>
-                    <p class="text-xs text-[#57534E]">ผู้รับปลายทาง</p>
-                    <p id="res-receiver" class="font-semibold text-[#181715] mt-0.5"></p>
+                    <p class="text-xs text-slate-500">ผู้รับปลายทาง</p>
+                    <p id="res-receiver" class="font-semibold text-slate-900 mt-0.5"></p>
                 </div>
                 <div>
-                    <p class="text-xs text-[#57534E]">จังหวัดปลายทาง</p>
-                    <p id="res-dest" class="font-semibold text-[#181715] mt-0.5"></p>
+                    <p class="text-xs text-slate-500">จังหวัดปลายทาง</p>
+                    <p id="res-dest" class="font-semibold text-[#003399] mt-0.5"></p>
                 </div>
             </div>
 
-            <!-- Vertical Delivery Timeline -->
             <div class="p-5 sm:p-6">
-                <h3 class="text-xs font-semibold uppercase tracking-wider text-[#57534E] mb-4">ประวัติสถานะการขนส่ง</h3>
-                <ol id="timeline-list" class="relative border-l-2 border-[#E2DFD7] ml-2.5 space-y-6"></ol>
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-4">ประวัติสถานะการขนส่ง</h3>
+                <ol id="timeline-list" class="relative border-l-2 border-slate-200 ml-2.5 space-y-6"></ol>
             </div>
         </div>
     </main>
 
-    <footer class="border-t border-[#E2DFD7] py-4 text-center text-xs text-[#57534E]">
-        CTT Logistics Operations • ศูนย์กระจายสินค้าหลักนครปฐม
+    <footer class="border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+        CTT LOGISTICS • ศูนย์กระจายสินค้าหลักนครปฐม
     </footer>
 
     <script>
@@ -117,20 +120,20 @@
             badge.className = item.status === 'จัดส่งสำเร็จ'
                 ? 'text-xs font-semibold px-3 py-1 rounded-md border bg-emerald-50 text-emerald-800 border-emerald-200'
                 : item.status === 'กำลังจัดส่ง'
-                ? 'text-xs font-semibold px-3 py-1 rounded-md border bg-amber-50 text-amber-800 border-amber-200'
-                : 'text-xs font-semibold px-3 py-1 rounded-md border bg-sky-50 text-sky-800 border-sky-200';
+                ? 'text-xs font-semibold px-3 py-1 rounded-md border bg-red-50 text-[#DC0000] border-red-200'
+                : 'text-xs font-semibold px-3 py-1 rounded-md border bg-blue-50 text-[#003399] border-blue-200';
 
             const steps = [
                 { title: 'จัดส่งสำเร็จ — ผู้รับเซ็นรับพัสดุเรียบร้อย', desc: `นำจ่ายสำเร็จ ณ ปลายทางจังหวัด${item.destination}`, active: item.status === 'จัดส่งสำเร็จ', done: item.status === 'จัดส่งสำเร็จ' },
                 { title: 'อยู่ระหว่างขนส่งไปยังศูนย์กระจายสินค้าปลายทาง', desc: `รถขนส่งออกจากศูนย์คัดแยกนครปฐม มุ่งหน้าจังหวัด${item.destination}`, active: item.status === 'กำลังจัดส่ง', done: item.status === 'กำลังจัดส่ง' || item.status === 'จัดส่งสำเร็จ' },
-                { title: 'รับพัสดุเข้าระบบเรียบร้อย', desc: `บันทึกข้อมูลพัสดุจาก ${item.sender} เข้าสู่ระบบ CTT Logistics`, active: item.status === 'รับเข้าระบบ', done: true }
+                { title: 'รับพัสดุเข้าระบบเรียบร้อย', desc: `บันทึกข้อมูลพัสดุจาก ${item.sender} เข้าสู่ระบบ CTT LOGISTICS`, active: item.status === 'รับเข้าระบบ', done: true }
             ];
 
             document.getElementById('timeline-list').innerHTML = steps.map(st => `
                 <li class="ml-5">
-                    <span class="absolute -left-[7px] w-3 h-3 rounded-full border-2 border-white ${st.done ? (st.active ? 'bg-[#D97706]' : 'bg-[#181715]') : 'bg-[#D6D3CB]'}"></span>
-                    <p class="text-sm font-semibold ${st.done ? 'text-[#181715]' : 'text-[#A8A29E]'}">${st.title}</p>
-                    <p class="text-xs text-[#57534E] mt-0.5">${st.desc}</p>
+                    <span class="absolute -left-[7px] w-3 h-3 rounded-full border-2 border-white ${st.done ? (st.active ? 'bg-[#DC0000]' : 'bg-[#003399]') : 'bg-slate-300'}"></span>
+                    <p class="text-sm font-semibold ${st.done ? 'text-slate-900' : 'text-slate-400'}">${st.title}</p>
+                    <p class="text-xs text-slate-500 mt-0.5">${st.desc}</p>
                 </li>
             `).join('');
         }
