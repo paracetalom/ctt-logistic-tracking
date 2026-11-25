@@ -3,161 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ติดตามสถานะพัสดุ - CTT Logistic</title>
-    <script src="https://cdn.tailwindcss.com">const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('tracking')) {
-            document.getElementById('track-input').value = urlParams.get('tracking');
-            document.getElementById('track-form').dispatchEvent(new Event('submit'));
-        }
-    </script>
+    <title>CTT Logistics — ตรวจสอบสถานะพัสดุ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Geist+Mono:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>body { font-family: 'IBM Plex Sans Thai', sans-serif; }</style>
+    <style>
+        body { font-family: 'IBM Plex Sans Thai', sans-serif; background-color: #F7F6F2; color: #181715; }
+        .mono { font-family: 'Geist Mono', monospace; font-variant-numeric: tabular-nums; }
+        h1, h2 { text-wrap: balance; }
+    </style>
 </head>
-<body class="bg-slate-100 min-h-screen flex flex-col text-slate-800">
-    <!-- Navbar -->
-    <nav class="bg-blue-900 text-white shadow-md">
-        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
-            <div class="flex items-center space-x-3">
-                <span class="bg-amber-500 text-blue-950 font-bold px-3 py-1 rounded-lg text-lg">CTT</span>
-                <div>
-                    <h1 class="text-lg font-bold">CTT Logistics Tracking</h1>
-                    <p class="text-xs text-blue-200">ระบบตรวจสอบสถานะพัสดุสำหรับลูกค้า</p>
-                </div>
+<body class="min-h-screen flex flex-col">
+    <header class="bg-white border-b border-[#E2DFD7]">
+        <div class="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <span class="bg-[#181715] text-white font-bold px-2.5 py-1 rounded-md text-xs tracking-wider mono">CTT</span>
+                <span class="font-semibold text-sm text-[#181715]">Logistics Tracking</span>
             </div>
-            <a href="/" class="text-xs bg-blue-800 hover:bg-blue-700 border border-blue-600 px-3 py-1.5 rounded-lg transition">
-                ระบบจัดการเจ้าหน้าที่
+            <a href="/" class="text-xs font-medium text-[#57534E] hover:text-[#181715] transition">
+                ระบบจัดการเจ้าหน้าที่ →
             </a>
         </div>
-    </nav>
+    </header>
 
-    <!-- Main Search Section -->
-    <main class="flex-grow max-w-2xl w-full mx-auto px-4 py-12">
-        <div class="bg-white rounded-xl border border-slate-200 p-6 md:p-8 text-center">
-            <h2 class="text-2xl font-bold text-blue-950 mb-2">ตรวจสอบสถานะพัสดุของคุณ</h2>
-            <p class="text-sm text-slate-500 mb-6">กรอกหมายเลขพัสดุ (Tracking Number) เพื่อดูความคืบหน้าการจัดส่ง</p>
-
-            <form id="track-form" class="flex flex-col sm:flex-row gap-3">
-                <input type="text" id="track-input" placeholder="ระบุเลขพัสดุ เช่น CTT2026002" required
-                    class="flex-grow border-2 border-slate-200 rounded-xl px-4 py-3 text-base uppercase focus:outline-none focus:border-blue-600">
-                <button type="submit" class="bg-amber-500 hover:bg-amber-400 text-blue-950 font-bold px-6 py-3 rounded-xl shadow transition">
-                    ตรวจสอบสถานะ
-                </button>
-            </form>
+    <main class="max-w-3xl w-full mx-auto px-4 py-10 flex-grow">
+        <div class="mb-6">
+            <h1 class="text-2xl font-bold text-[#181715]">ตรวจสอบสถานะการจัดส่งพัสดุ</h1>
+            <p class="text-sm text-[#57534E] mt-1">กรอกหมายเลขพัสดุ 11 หลัก (เช่น CTT2026xxxx) เพื่อดูความคืบหน้าล่าสุด</p>
         </div>
 
-        <!-- Result Card -->
-        <div id="result-box" class="hidden mt-6 bg-white rounded-xl border border-slate-200 p-6 md:p-8">
-            <div class="flex justify-between items-start border-b border-slate-100 pb-4 mb-6">
-                <div>
-                    <p class="text-xs text-slate-400 uppercase">หมายเลขพัสดุ</p>
-                    <h3 id="res-tracking" class="text-2xl font-bold text-blue-900 font-mono"></h3>
-                </div>
-                <span id="res-badge" class="px-3 py-1 rounded-full text-xs font-semibold"></span>
-            </div>
+        <!-- Search Box (Concentric Radius: outer 12px, padding 6px, inner 6px) -->
+        <form id="track-form" class="bg-white border border-[#D6D3CB] rounded-xl p-1.5 flex gap-2 shadow-xs">
+            <input type="text" id="tracking-input" required placeholder="ระบุหมายเลขพัสดุ..."
+                   class="flex-grow px-3.5 py-2.5 text-sm mono uppercase bg-transparent focus:outline-none">
+            <button type="submit" class="bg-[#D97706] hover:bg-[#B45309] text-white font-semibold text-sm px-6 py-2.5 rounded-md transition">
+                ค้นหาพัสดุ
+            </button>
+        </form>
 
-            <!-- Stepper Timeline -->
-            <div class="relative flex justify-between items-center mb-8 px-2">
-                <div class="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-200 -z-0"></div>
-                <div id="progress-bar" class="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-emerald-500 transition-all duration-500 -z-0" style="width: 0%;"></div>
-
-                <div class="relative z-10 flex flex-col items-center">
-                    <div id="step-1" class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm bg-slate-200 text-slate-500 border-4 border-white shadow">1</div>
-                    <span class="text-xs font-medium mt-2">รับเข้าระบบ</span>
-                </div>
-                <div class="relative z-10 flex flex-col items-center">
-                    <div id="step-2" class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm bg-slate-200 text-slate-500 border-4 border-white shadow">2</div>
-                    <span class="text-xs font-medium mt-2">กำลังจัดส่ง</span>
-                </div>
-                <div class="relative z-10 flex flex-col items-center">
-                    <div id="step-3" class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm bg-slate-200 text-slate-500 border-4 border-white shadow">3</div>
-                    <span class="text-xs font-medium mt-2">จัดส่งสำเร็จ</span>
-                </div>
-            </div>
-
-            <!-- Shipment Details -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[#f7f6f2] text-[#1c1917] p-4 rounded-xl text-sm">
-                <div>
-                    <p class="text-slate-400 text-xs">ผู้ส่ง (Origin)</p>
-                    <p id="res-sender" class="font-semibold text-slate-700 mt-0.5"></p>
-                </div>
-                <div>
-                    <p class="text-slate-400 text-xs">ผู้รับ (Recipient)</p>
-                    <p id="res-receiver" class="font-semibold text-slate-700 mt-0.5"></p>
-                </div>
-                <div>
-                    <p class="text-slate-400 text-xs">จังหวัดปลายทาง</p>
-                    <p id="res-dest" class="font-semibold text-blue-900 mt-0.5"></p>
-                </div>
-                <div>
-                    <p class="text-slate-400 text-xs">อัปเดตสถานะล่าสุด</p>
-                    <p id="res-updated" class="font-medium text-slate-600 mt-0.5"></p>
-                </div>
-            </div>
+        <!-- Error Alert -->
+        <div id="error-box" class="hidden mt-5 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl text-sm">
+            ไม่พบข้อมูลหมายเลขพัสดุนี้ในระบบ กรุณาตรวจสอบความถูกต้องอีกครั้ง
         </div>
 
-        <!-- Not Found Message -->
-        <div id="not-found" class="hidden mt-6 bg-red-50 border border-red-200 text-red-700 rounded-2xl p-6 text-center">
-            <p class="font-semibold">ไม่พบข้อมูลหมายเลขพัสดุนี้ในระบบ</p>
-            <p class="text-xs mt-1 text-red-500">กรุณาตรวจสอบตัวอักษรและตัวเลขอีกครั้ง</p>
+        <!-- Tracking Result Card -->
+        <div id="result-box" class="hidden mt-6 bg-white border border-[#E2DFD7] rounded-xl overflow-hidden">
+            <div class="p-5 sm:p-6 border-b border-[#E2DFD7] bg-[#FAF9F6] flex flex-wrap justify-between items-center gap-4">
+                <div>
+                    <p class="text-xs text-[#57534E]">หมายเลขติดตามพัสดุ</p>
+                    <div class="flex items-center gap-2 mt-0.5">
+                        <h2 id="res-tracking" class="text-xl font-bold mono text-[#181715]"></h2>
+                        <button onclick="copyTracking()" id="copy-btn" class="text-[11px] px-2 py-0.5 rounded border border-[#D6D3CB] bg-white hover:bg-[#F7F6F2] text-[#57534E] transition">คัดลอก</button>
+                    </div>
+                </div>
+                <span id="res-badge" class="text-xs font-semibold px-3 py-1 rounded-md border"></span>
+            </div>
+
+            <div class="p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-3 gap-4 border-b border-[#E2DFD7] text-sm">
+                <div>
+                    <p class="text-xs text-[#57534E]">ต้นทาง / ผู้ส่ง</p>
+                    <p id="res-sender" class="font-semibold text-[#181715] mt-0.5"></p>
+                </div>
+                <div>
+                    <p class="text-xs text-[#57534E]">ผู้รับปลายทาง</p>
+                    <p id="res-receiver" class="font-semibold text-[#181715] mt-0.5"></p>
+                </div>
+                <div>
+                    <p class="text-xs text-[#57534E]">จังหวัดปลายทาง</p>
+                    <p id="res-dest" class="font-semibold text-[#181715] mt-0.5"></p>
+                </div>
+            </div>
+
+            <!-- Vertical Delivery Timeline -->
+            <div class="p-5 sm:p-6">
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-[#57534E] mb-4">ประวัติสถานะการขนส่ง</h3>
+                <ol id="timeline-list" class="relative border-l-2 border-[#E2DFD7] ml-2.5 space-y-6"></ol>
+            </div>
         </div>
     </main>
 
+    <footer class="border-t border-[#E2DFD7] py-4 text-center text-xs text-[#57534E]">
+        CTT Logistics Operations • ศูนย์กระจายสินค้าหลักนครปฐม
+    </footer>
+
     <script>
-        document.getElementById('track-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const query = document.getElementById('track-input').value.trim().toUpperCase();
+        async function searchShipment(trackingNo) {
+            const cleanId = trackingNo.trim().toUpperCase();
+            if (!cleanId) return;
+            document.getElementById('tracking-input').value = cleanId;
+
             const res = await fetch('/api/shipments');
             const list = await res.json();
-            const item = list.find(s => s.tracking_no.toUpperCase() === query);
+            const item = list.find(s => s.tracking_no.toUpperCase() === cleanId);
 
-            const resultBox = document.getElementById('result-box');
-            const notFound = document.getElementById('not-found');
+            const errBox = document.getElementById('error-box');
+            const resBox = document.getElementById('result-box');
 
             if (!item) {
-                resultBox.classList.add('hidden');
-                notFound.classList.remove('hidden');
+                resBox.classList.add('hidden');
+                errBox.classList.remove('hidden');
                 return;
             }
 
-            notFound.classList.add('hidden');
-            resultBox.classList.remove('hidden');
+            errBox.classList.add('hidden');
+            resBox.classList.remove('hidden');
 
             document.getElementById('res-tracking').innerText = item.tracking_no;
             document.getElementById('res-sender').innerText = item.sender;
             document.getElementById('res-receiver').innerText = item.receiver;
             document.getElementById('res-dest').innerText = item.destination;
-            document.getElementById('res-updated').innerText = new Date(item.updated_at).toLocaleString('th-TH');
 
             const badge = document.getElementById('res-badge');
             badge.innerText = item.status;
+            badge.className = item.status === 'จัดส่งสำเร็จ'
+                ? 'text-xs font-semibold px-3 py-1 rounded-md border bg-emerald-50 text-emerald-800 border-emerald-200'
+                : item.status === 'กำลังจัดส่ง'
+                ? 'text-xs font-semibold px-3 py-1 rounded-md border bg-amber-50 text-amber-800 border-amber-200'
+                : 'text-xs font-semibold px-3 py-1 rounded-md border bg-sky-50 text-sky-800 border-sky-200';
 
-            // Reset steps
-            const s1 = document.getElementById('step-1');
-            const s2 = document.getElementById('step-2');
-            const s3 = document.getElementById('step-3');
-            const bar = document.getElementById('progress-bar');
+            const steps = [
+                { title: 'จัดส่งสำเร็จ — ผู้รับเซ็นรับพัสดุเรียบร้อย', desc: `นำจ่ายสำเร็จ ณ ปลายทางจังหวัด${item.destination}`, active: item.status === 'จัดส่งสำเร็จ', done: item.status === 'จัดส่งสำเร็จ' },
+                { title: 'อยู่ระหว่างขนส่งไปยังศูนย์กระจายสินค้าปลายทาง', desc: `รถขนส่งออกจากศูนย์คัดแยกนครปฐม มุ่งหน้าจังหวัด${item.destination}`, active: item.status === 'กำลังจัดส่ง', done: item.status === 'กำลังจัดส่ง' || item.status === 'จัดส่งสำเร็จ' },
+                { title: 'รับพัสดุเข้าระบบเรียบร้อย', desc: `บันทึกข้อมูลพัสดุจาก ${item.sender} เข้าสู่ระบบ CTT Logistics`, active: item.status === 'รับเข้าระบบ', done: true }
+            ];
 
-            [s1, s2, s3].forEach(el => el.className = 'w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm bg-slate-200 text-slate-500 border-4 border-white shadow');
-
-            if (item.status === 'รับเข้าระบบ') {
-                s1.className = 'w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm bg-blue-600 text-white border-4 border-white shadow';
-                bar.style.width = '15%';
-                badge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800';
-            } else if (item.status === 'กำลังจัดส่ง') {
-                s1.className = s2.className = 'w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm bg-amber-500 text-white border-4 border-white shadow';
-                bar.style.width = '50%';
-                badge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800';
-            } else {
-                s1.className = s2.className = s3.className = 'w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm bg-emerald-600 text-white border-4 border-white shadow';
-                bar.style.width = '100%';
-                badge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800';
-            }
-        });
-    const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('tracking')) {
-            document.getElementById('track-input').value = urlParams.get('tracking');
-            document.getElementById('track-form').dispatchEvent(new Event('submit'));
+            document.getElementById('timeline-list').innerHTML = steps.map(st => `
+                <li class="ml-5">
+                    <span class="absolute -left-[7px] w-3 h-3 rounded-full border-2 border-white ${st.done ? (st.active ? 'bg-[#D97706]' : 'bg-[#181715]') : 'bg-[#D6D3CB]'}"></span>
+                    <p class="text-sm font-semibold ${st.done ? 'text-[#181715]' : 'text-[#A8A29E]'}">${st.title}</p>
+                    <p class="text-xs text-[#57534E] mt-0.5">${st.desc}</p>
+                </li>
+            `).join('');
         }
+
+        function copyTracking() {
+            const text = document.getElementById('res-tracking').innerText;
+            navigator.clipboard.writeText(text);
+            const btn = document.getElementById('copy-btn');
+            btn.innerText = 'คัดลอกแล้ว';
+            setTimeout(() => btn.innerText = 'คัดลอก', 2000);
+        }
+
+        document.getElementById('track-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            searchShipment(document.getElementById('tracking-input').value);
+        });
+
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('id')) searchShipment(params.get('id'));
     </script>
 </body>
 </html>
