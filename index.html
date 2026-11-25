@@ -232,7 +232,7 @@
             const item = allShipments.find(s => s.tracking_no === trackingNo);
             if (!item) return;
             document.getElementById('p-tracking').innerText = item.tracking_no;
-            const trackUrl = window.location.origin + '/track?tracking=' + item.tracking_no;
+            const trackUrl = 'http://192.168.10.131' + '/track?tracking=' + item.tracking_no;
             document.getElementById('p-qr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(trackUrl);
             document.getElementById('p-sender').innerText = item.sender;
             document.getElementById('p-receiver').innerText = item.receiver;
