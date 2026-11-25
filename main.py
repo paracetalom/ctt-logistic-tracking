@@ -99,3 +99,9 @@ def delete_shipment(tracking_no: str):
         cursor.execute("DELETE FROM shipments WHERE tracking_no = %s", (tracking_no.upper(),))
     conn.close()
     return {"message": "ลบรายการสำเร็จ"}
+
+from fastapi.responses import FileResponse
+
+@app.get("/track")
+async def public_tracking_page():
+    return FileResponse("track.html")

@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CTT Logistic Tracking v2.1</title>
+    <title>CTT Logistic Tracking v2.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Prompt', sans-serif; }
@@ -18,7 +19,7 @@
 <body class="bg-slate-100 min-h-screen text-slate-800">
     <!-- Navbar -->
     <nav class="bg-blue-900 text-white shadow-lg">
-        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-3">
             <div class="flex items-center space-x-3">
                 <span class="bg-amber-500 text-blue-950 font-bold px-3 py-1 rounded-lg text-lg">CTT</span>
                 <div>
@@ -26,11 +27,14 @@
                     <p class="text-xs text-blue-200">ระบบบริหารจัดการและติดตามพัสดุภายในองค์กร (MySQL Edition)</p>
                 </div>
             </div>
-            <div class="flex items-center space-x-3">
-                <button onclick="exportCSV()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg shadow transition flex items-center gap-1">
+            <div class="flex items-center space-x-2">
+                <a href="/track" target="_blank" class="bg-amber-500 hover:bg-amber-400 text-blue-950 text-xs font-bold px-3 py-1.5 rounded-lg shadow transition">
+                    🔍 หน้าเช็กพัสดุ (ลูกค้า)
+                </a>
+                <button onclick="exportCSV()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg shadow transition">
                     📥 Export CSV
                 </button>
-                <span class="bg-emerald-500/20 border border-emerald-400 text-emerald-300 text-xs px-3 py-1 rounded-full">● API Online</span>
+                <span class="hidden sm:inline-block bg-emerald-500/20 border border-emerald-400 text-emerald-300 text-xs px-3 py-1 rounded-full">● API Online</span>
             </div>
         </div>
     </nav>
@@ -52,11 +56,27 @@
             </div>
         </div>
 
+        <!-- Analytics Charts -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <h3 class="text-sm font-semibold text-slate-700 mb-3">📊 สัดส่วนสถานะพัสดุ</h3>
+                <div class="h-52 flex justify-center">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <h3 class="text-sm font-semibold text-slate-700 mb-3">📍 ปริมาณพัสดุแยกตามจังหวัดปลายทาง</h3>
+                <div class="h-52">
+                    <canvas id="destChart"></canvas>
+                </div>
+            </div>
+        </div>
+
         <!-- Add Form -->
         <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <h2 class="text-lg font-semibold text-slate-800 mb-4">+ บันทึกรับพัสดุเข้าระบบ</h2>
             <form id="add-form" class="grid grid-cols-1 md:grid-cols-5 gap-3">
-                <input type="text" id="tracking_no" placeholder="เลขพัสดุ (เช่น CTT2026002)" required class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-600 uppercase">
+                <input type="text" id="tracking_no" placeholder="เลขพัสดุ (เช่น CTT2026003)" required class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-600 uppercase">
                 <input type="text" id="sender" placeholder="ชื่อผู้ส่ง / สาขาต้นทาง" required class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-600">
                 <input type="text" id="receiver" placeholder="ชื่อผู้รับ" required class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-600">
                 <input type="text" id="destination" placeholder="จังหวัดปลายทาง" required class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-600">
@@ -115,12 +135,15 @@
 
     <script>
         let allShipments = [];
+        let statusChartInstance = null;
+        let destChartInstance = null;
 
         async function loadShipments() {
             const res = await fetch('/api/shipments');
             allShipments = await res.json();
             renderTable(allShipments);
             updateStats(allShipments);
+            updateCharts(allShipments);
         }
 
         function updateStats(data) {
@@ -128,6 +151,47 @@
             const done = data.filter(s => s.status === 'จัดส่งสำเร็จ').length;
             document.getElementById('stat-done').innerText = done;
             document.getElementById('stat-active').innerText = data.length - done;
+        }
+
+        function updateCharts(data) {
+            const received = data.filter(s => s.status === 'รับเข้าระบบ').length;
+            const shipping = data.filter(s => s.status === 'กำลังจัดส่ง').length;
+            const delivered = data.filter(s => s.status === 'จัดส่งสำเร็จ').length;
+
+            if (statusChartInstance) statusChartInstance.destroy();
+            statusChartInstance = new Chart(document.getElementById('statusChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['รับเข้าระบบ', 'กำลังจัดส่ง', 'จัดส่งสำเร็จ'],
+                    datasets: [{
+                        data: [received, shipping, delivered],
+                        backgroundColor: ['#2563eb', '#f59e0b', '#10b981']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            const destCounts = {};
+            data.forEach(s => { destCounts[s.destination] = (destCounts[s.destination] || 0) + 1; });
+
+            if (destChartInstance) destChartInstance.destroy();
+            destChartInstance = new Chart(document.getElementById('destChart'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(destCounts),
+                    datasets: [{
+                        label: 'จำนวนพัสดุ (ชิ้น)',
+                        data: Object.values(destCounts),
+                        backgroundColor: '#1e3a8a',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                }
+            });
         }
 
         function getBadgeColor(status) {
