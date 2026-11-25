@@ -100,13 +100,13 @@
                     </defs>
 
                     <!-- Stylized Thailand Silhouette -->
-                    <path d="M165,45 L205,40 L235,70 L225,115 L255,140 L335,145 L385,175 L395,225 L360,265 L285,270 L270,315 L295,355 L265,380 L215,355 L195,385 L175,455 L195,525 L235,575 L265,610 L245,635 L195,610 L165,555 L145,485 L155,410 L140,335 L120,275 L135,205 L125,135 L145,85 Z"
+                    <path d="M305.5,397.7 L259.6,377.7 L215.8,378.5 L223.3,344.1 L178.3,344.4 L174.2,392.5 L146.6,456.3 L130.0,494.9 L133.5,526.6 L166.8,527.9 L187.6,567.8 L196.8,605.7 L225.3,630.7 L256.3,635.8 L282.8,658.5 L266.1,676.4 L232.3,681.6 L228.3,659.2 L186.5,640.0 L177.6,647.8 L157.4,631.1 L148.7,609.4 L121.5,584.7 L96.7,564.0 L88.3,589.7 L78.6,565.4 L84.2,538.2 L99.3,496.2 L124.0,451.3 L152.1,410.6 L132.1,370.7 L132.9,350.4 L127.1,326.0 L93.0,291.3 L80.8,269.4 L98.4,261.3 L117.1,223.3 L96.2,194.4 L63.7,162.5 L39.0,124.2 L60.6,116.2 L83.9,69.0 L120.0,67.0 L149.9,48.1 L179.2,38.0 L201.3,51.5 L204.3,77.7 L238.8,79.7 L226.3,125.8 L227.5,165.0 L281.4,138.9 L296.7,146.6 L326.7,145.3 L337.0,130.1 L375.7,133.1 L414.6,168.6 L417.8,211.7 L459.2,249.8 L456.9,286.8 L440.3,306.5 L392.3,300.3 L326.2,308.6 L293.4,345.0 L305.5,397.7 Z"
                           fill="#0f172a" stroke="#1e3a8a" stroke-width="2.5" />
 
                     <!-- Grid Radar Rings around Hub (Nakhon Pathom: 205, 325) -->
-                    <circle cx="205" cy="325" r="80" fill="none" stroke="rgba(56,189,248,0.12)" stroke-dasharray="4,4" />
-                    <circle cx="205" cy="325" r="170" fill="none" stroke="rgba(56,189,248,0.10)" stroke-dasharray="4,4" />
-                    <circle cx="205" cy="325" r="260" fill="none" stroke="rgba(56,189,248,0.08)" stroke-dasharray="4,4" />
+                    <circle cx="176.4" cy="326.3" r="80" fill="none" stroke="rgba(56,189,248,0.12)" stroke-dasharray="4,4" />
+                    <circle cx="176.4" cy="326.3" r="170" fill="none" stroke="rgba(56,189,248,0.10)" stroke-dasharray="4,4" />
+                    <circle cx="176.4" cy="326.3" r="260" fill="none" stroke="rgba(56,189,248,0.08)" stroke-dasharray="4,4" />
 
                     <!-- Dynamic Routes Layer -->
                     <g id="routes-layer"></g>
@@ -115,9 +115,9 @@
                     <g id="nodes-layer"></g>
 
                     <!-- Central Hub Marker (Nakhon Pathom) -->
-                    <circle cx="205" cy="325" r="24" fill="url(#hubGlow)" />
-                    <circle cx="205" cy="325" r="6" fill="#38bdf8" stroke="#ffffff" stroke-width="2" />
-                    <text x="145" y="312" fill="#38bdf8" font-size="11" font-weight="bold" class="mono">CTT HUB</text>
+                    <circle cx="176.4" cy="326.3" r="24" fill="url(#hubGlow)" />
+                    <circle cx="176.4" cy="326.3" r="6" fill="#38bdf8" stroke="#ffffff" stroke-width="2" />
+                    <text x="121.4" y="316.3" fill="#38bdf8" font-size="11" font-weight="bold" class="mono">CTT HUB</text>
 
                     <!-- Moving Trucks Layer -->
                     <g id="trucks-layer"></g>
@@ -173,7 +173,7 @@
         setInterval(updateClock, 1000);
 
         // 2. Province Coordinates on SVG Canvas (Hub = [205, 325])
-        const HUB = { x: 205, y: 325 };
+        const HUB = { x: 176.4, y: 326.3 };
         const PROVINCES = {
             "เชียงใหม่": { x: 160, y: 95 },
             "ขอนแก่น": { x: 305, y: 195 },
