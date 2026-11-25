@@ -84,10 +84,10 @@
         <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <h2 class="text-lg font-semibold text-slate-800 mb-4">บันทึกรับพัสดุเข้าระบบ</h2>
             <form id="add-form" class="grid grid-cols-1 md:grid-cols-5 gap-3">
-                <input type="text" id="tracking_no" placeholder="เลขพัสดุ (เช่น CTT2026003)" required class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-600 uppercase">
-                <input type="text" id="sender" placeholder="ชื่อผู้ส่ง / สาขาต้นทาง" required class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-600">
-                <input type="text" id="receiver" placeholder="ชื่อผู้รับ" required class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-600">
-                <input type="text" id="destination" placeholder="จังหวัดปลายทาง" required class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-600">
+                <input type="text" id="tracking_no" placeholder="เลขพัสดุ (เช่น CTT2026003)" required class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600/40 focus:border-blue-600 uppercase">
+                <input type="text" id="sender" placeholder="ชื่อผู้ส่ง / สาขาต้นทาง" required class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600/40 focus:border-blue-600">
+                <input type="text" id="receiver" placeholder="ชื่อผู้รับ" required class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600/40 focus:border-blue-600">
+                <input type="text" id="destination" placeholder="จังหวัดปลายทาง" required class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600/40 focus:border-blue-600">
                 <button type="submit" class="bg-blue-700 hover:bg-blue-800 text-white font-medium rounded-lg px-4 py-2 text-sm transition">บันทึกพัสดุ</button>
             </form>
         </div>
@@ -96,7 +96,7 @@
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="p-5 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center gap-3">
                 <h2 class="text-lg font-semibold text-slate-800">รายการพัสดุล่าสุด</h2>
-                <input type="text" id="search" placeholder="ค้นหาเลขพัสดุ, ผู้รับ, ปลายทาง..." class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-full md:w-64 focus:outline-none focus:border-blue-600">
+                <input type="text" id="search" placeholder="ค้นหาเลขพัสดุ, ผู้รับ, ปลายทาง..." class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-full md:w-64 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600/40 focus:border-blue-600">
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
@@ -121,11 +121,11 @@
     <div id="print-area" class="hidden p-8 border-2 border-black max-w-md mx-auto mt-10 bg-white">
         <div class="border-b-2 border-black pb-3 mb-4 flex justify-between items-center">
             <span class="text-2xl font-bold">CTT LOGISTIC</span>
-            <span class="text-sm font-mono border border-black px-2 py-0.5">EXPRESS</span>
+            <span class="text-sm font-mono tabular-nums border border-black px-2 py-0.5">EXPRESS</span>
         </div>
         <div class="mb-4">
             <p class="text-xs text-gray-500">TRACKING NUMBER</p>
-            <div class="flex justify-between items-center"><div><p id="p-tracking" class="text-3xl font-bold font-mono tracking-wider"></p><p class="text-xs text-gray-500 mt-1">สแกนเพื่อติดตามสถานะพัสดุ</p></div><img id="p-qr" src="" alt="QR Code" class="w-24 h-24 border border-black p-1"></div>
+            <div class="flex justify-between items-center"><div><p id="p-tracking" class="text-3xl font-bold font-mono tabular-nums tracking-wider"></p><p class="text-xs text-gray-500 mt-1">สแกนเพื่อติดตามสถานะพัสดุ</p></div><img id="p-qr" src="" alt="QR Code" class="w-24 h-24 border border-black p-1"></div>
         </div>
         <div class="grid grid-cols-2 gap-4 border-t border-b border-black py-3 mb-4 text-sm">
             <div>
@@ -312,6 +312,26 @@
         });
 
         loadShipments();
+    </script>
+
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+    <script>
+        function showToast(message, type = "success") {
+            const container = document.getElementById("toast-container");
+            const toast = document.createElement("div");
+            const colors = type === "error"
+                ? "bg-[#1c1917] border-red-500/60 text-red-200"
+                : "bg-[#1c1917] border-amber-500/60 text-stone-100";
+            toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg text-sm transition-all duration-300 translate-y-2 opacity-0 ${colors}`;
+            toast.innerHTML = `<span class="w-2 h-2 rounded-full ${type === "error" ? "bg-red-500" : "bg-amber-500"}"></span><span>${message}</span>`;
+            container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.remove("translate-y-2", "opacity-0"));
+            setTimeout(() => {
+                toast.classList.add("opacity-0", "translate-y-2");
+                setTimeout(() => toast.remove(), 300);
+            }, 3200);
+        }
+        window.alert = function(msg) { showToast(msg, msg.includes("ผิดพลาด") || msg.includes("ไม่สำเร็จ") ? "error" : "success"); };
     </script>
 </body>
 </html>
