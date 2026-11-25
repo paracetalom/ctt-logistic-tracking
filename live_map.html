@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTT Command Center - Live Fleet Telemetry</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Prompt', sans-serif; background-color: #060b19; color: #e2e8f0; overflow-x: hidden; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        #map { height: calc(100vh - 140px); width: 100%; border-radius: 1rem; z-index: 1; }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.78);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            box-shadow: 0 0 25px rgba(2, 132, 199, 0.15);
+        }
+        .pulse-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+        .truck-marker {
+            background: #f59e0b; color: #090d16; font-weight: bold;
+            border: 2px solid #fff; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 15px #f59e0b; font-size: 14px;
+        }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <!-- Top Command Header -->
+    <header class="border-b border-slate-800/80 bg-slate-950/90 px-6 py-3 flex flex-wrap justify-between items-center gap-4">
+        <div class="flex items-center space-x-4">
+            <div class="bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 font-black px-3.5 py-1.5 rounded-lg text-xl tracking-wider shadow-lg shadow-amber-500/20">
+                CTT
+            </div>
+            <div>
+                <div class="flex items-center gap-2.5">
+                    <h1 class="text-lg font-bold tracking-wide text-white">GLOBAL LOGISTICS COMMAND CENTER</h1>
+                    <span class="flex items-center gap-1.5 text-[11px] mono bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 px-2.5 py-0.5 rounded-full">
+                        <span class="pulse-dot"></span> LIVE TELEMETRY
+                    </span>
+                </div>
+                <p class="text-xs text-slate-400">ศูนย์ควบคุมและติดตามพิกัดการขนส่งแบบเรียลไทม์ (MySQL 8.0 Live Stream)</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <div class="text-right hidden md:block">
+                <p class="text-[10px] text-slate-400 mono">SYSTEM CLOCK (ICT)</p>
+                <p id="clock" class="text-sm font-bold text-sky-400 mono">--:--:--</p>
+            </div>
+            <a href="/" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-xs px-4 py-2 rounded-lg transition">
+                ← กลับหน้าจัดการหลัก
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-grow p-4 grid grid-cols-1 lg:grid-cols-4 gap-4 relative">
+        <!-- Left Map Area (3 Columns) -->
+        <div class="lg:col-span-3 relative">
+            <div id="map" class="border border-slate-800 shadow-2xl"></div>
+
+            <!-- Floating KPI Overlay on Map -->
+            <div class="absolute bottom-5 left-5 right-5 z-[500] grid grid-cols-2 sm:grid-cols-4 gap-3 pointer-events-none">
+                <div class="glass-panel p-3.5 rounded-xl">
+                    <p class="text-[11px] text-sky-300 mono">TOTAL SHIPMENTS</p>
+                    <p id="kpi-total" class="text-2xl font-bold text-white mt-0.5 mono">0</p>
+                </div>
+                <div class="glass-panel p-3.5 rounded-xl">
+                    <p class="text-[11px] text-amber-300 mono">ACTIVE FLEET IN TRANSIT</p>
+                    <p id="kpi-transit" class="text-2xl font-bold text-amber-400 mt-0.5 mono">0</p>
+                </div>
+                <div class="glass-panel p-3.5 rounded-xl">
+                    <p class="text-[11px] text-emerald-300 mono">DELIVERED SUCCESS</p>
+                    <p id="kpi-done" class="text-2xl font-bold text-emerald-400 mt-0.5 mono">0</p>
+                </div>
+                <div class="glass-panel p-3.5 rounded-xl">
+                    <p class="text-[11px] text-purple-300 mono">NETWORK LATENCY</p>
+                    <p class="text-2xl font-bold text-purple-400 mt-0.5 mono">12 <span class="text-xs font-normal">ms</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Telemetry Feed (1 Column) -->
+        <div class="glass-panel rounded-2xl p-4 flex flex-col justify-between h-[calc(100vh-140px)]">
+            <div>
+                <div class="flex justify-between items-center border-b border-slate-700/80 pb-3 mb-3">
+                    <h2 class="text-sm font-bold text-sky-400 tracking-wider mono">📡 LIVE FLEET FEED</h2>
+                    <span class="text-[10px] text-slate-400 mono">AUTO-SYNC</span>
+                </div>
+                <div id="fleet-list" class="space-y-2.5 overflow-y-auto max-h-[calc(100vh-260px)] pr-1">
+                    <!-- Dynamic items -->
+                </div>
+            </div>
+
+            <div class="border-t border-slate-800 pt-3 mt-2 text-[11px] text-slate-400 mono flex justify-between">
+                <span>HUB: NAKHON PATHOM</span>
+                <span class="text-emerald-400">● DB CONNECTED</span>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Update Clock
+        setInterval(() => {
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString('th-TH');
+        }, 1000);
+
+        // Hub Coordinate (Nakhon Pathom / Bangkok Metro)
+        const HUB = [13.7563, 100.3200];
+
+        // Province Coordinates Dictionary
+        const PROVINCES = {
+            "กรุงเทพฯ": [13.7563, 100.5018],
+            "นครปฐม": [13.8199, 100.0622],
+            "ชลบุรี": [13.3611, 100.9847],
+            "เชียงใหม่": [18.7883, 98.9853],
+            "ขอนแก่น": [16.4322, 102.8236],
+            "ภูเก็ต": [7.8804, 98.3923],
+            "นครราชสีมา": [14.9799, 102.0978],
+            "สงขลา": [7.1897, 100.5954]
+        };
+
+        // Initialize Dark Map
+        const map = L.map
+
+# 1. เพิ่ม Route /live-map ใน main.py
+grep -q '"/live-map"' main.py || cat << 'EOF' >> main.py
+
+@app.get("/live-map")
+async def live_command_center():
+    return FileResponse("live_map.html")

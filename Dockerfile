@@ -5,7 +5,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY main.py index.html track.html ./
+COPY main.py *.html ./
 
 EXPOSE 8000
 
