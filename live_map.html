@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CTT Command Center - Live Fleet Telemetry</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Geist+Mono:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Prompt', sans-serif; background-color: #050914; color: #e2e8f0; overflow-x: hidden; }
-        .mono { font-family: 'JetBrains Mono', monospace; }
+        body { font-family: 'IBM Plex Sans Thai', sans-serif; background-color: #121110; color: #e2e8f0; overflow-x: hidden; }
+        .mono { font-family: 'Geist Mono', monospace; }
         .glass-panel {
-            background: rgba(13, 21, 38, 0.88);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(56, 189, 248, 0.25);
-            box-shadow: 0 0 30px rgba(2, 132, 199, 0.12);
+            background: #1c1a17;
+            
+            border: 1px solid #2e2b27;
+            
         }
         .map-grid {
             background-image: 
@@ -49,9 +49,9 @@
 </head>
 <body class="min-h-screen flex flex-col">
     <!-- Top Command Header -->
-    <header class="border-b border-slate-800/80 bg-slate-950/95 px-6 py-3 flex flex-wrap justify-between items-center gap-4">
+    <header class="border-b border-[#2a2723] bg-[#161513] px-6 py-3 flex flex-wrap justify-between items-center gap-4">
         <div class="flex items-center space-x-4">
-            <div class="bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 font-black px-3.5 py-1.5 rounded-lg text-xl tracking-wider shadow-lg shadow-amber-500/20">
+            <div class="bg-[#d97706] text-white font-black px-3.5 py-1.5 rounded-lg text-xl tracking-wider ">
                 CTT
             </div>
             <div>
@@ -68,9 +68,9 @@
         <div class="flex items-center gap-3">
             <div class="text-right hidden md:block mr-2">
                 <p class="text-[10px] text-slate-400 mono">SYSTEM CLOCK (ICT)</p>
-                <p id="clock" class="text-sm font-bold text-sky-400 mono">--:--:--</p>
+                <p id="clock" class="text-sm font-bold text-[#e7e5e4] mono">--:--:--</p>
             </div>
-            <button onclick="document.documentElement.requestFullscreen()" class="bg-sky-950 hover:bg-sky-900 border border-sky-500/50 text-sky-300 text-xs px-3 py-2 rounded-lg transition">
+            <button onclick="document.documentElement.requestFullscreen()" class="bg-sky-950 hover:bg-sky-900 border border-sky-500/50 text-[#a8a29e] text-xs px-3 py-2 rounded-lg transition">
                 ขยายเต็มจอ
             </button>
             <a href="/" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-xs px-4 py-2 rounded-lg transition">
@@ -82,11 +82,11 @@
     <!-- Main Workspace -->
     <main class="flex-grow p-4 grid grid-cols-1 lg:grid-cols-4 gap-4">
         <!-- Left Interactive Thailand Radar Map (3 Columns) -->
-        <div id="map-viewport" class="lg:col-span-3 relative rounded-2xl border border-slate-800 bg-[#070d1f] map-grid overflow-hidden flex flex-col justify-between min-h-[600px]">
+        <div id="map-viewport" class="lg:col-span-3 relative rounded-2xl border border-[#2a2723] bg-[#171614] map-grid overflow-hidden flex flex-col justify-between min-h-[600px]">
             <!-- Top Radar Overlay Info -->
             <div class="p-4 flex justify-between items-start z-10 pointer-events-none">
                 <div class="glass-panel px-3.5 py-2 rounded-xl text-xs mono">
-                    <p class="text-sky-400 font-bold">เครือข่ายขนส่งทางบกภายในประเทศ</p>
+                    <p class="text-[#e7e5e4] font-bold">เครือข่ายขนส่งทางบกภายในประเทศ</p>
                     <p class="text-slate-400 text-[11px] mt-0.5">ศูนย์กระจายสินค้าหลัก: นครปฐม</p>
                 </div>
                 <div class="flex flex-col items-end gap-2">
@@ -99,7 +99,8 @@
                     <div class="glass-panel rounded-xl p-1 flex gap-1 pointer-events-auto">
                         <button onclick="zoomBy(1.3)" title="ซูมเข้า" class="w-8 h-8 rounded-lg bg-slate-800/80 hover:bg-sky-600 text-white font-bold text-base transition">+</button>
                         <button onclick="zoomBy(0.75)" title="ซูมออก" class="w-8 h-8 rounded-lg bg-slate-800/80 hover:bg-sky-600 text-white font-bold text-base transition">−</button>
-                        <button onclick="resetView()" title="รีเซ็ตมุมมอง" class="px-2.5 h-8 rounded-lg bg-slate-800/80 hover:bg-amber-500 hover:text-slate-950 text-xs font-bold transition mono">RESET</button>
+                        <button id="btn-pause" onclick="toggleAnimation()" aria-pressed="false" class="px-2.5 h-8 rounded-lg bg-[#292524] hover:bg-[#44403c] text-[#e7e5e4] text-xs font-medium transition mono">PAUSE</button>
+                        <button onclick="resetView()" title="รีเซ็ตมุมมอง" class="px-2.5 h-8 rounded-lg bg-[#292524] hover:bg-[#d97706] hover:text-white text-xs font-medium transition mono">RESET</button>
                     </div>
                 </div>
             </div>
@@ -115,7 +116,7 @@
 
             <!-- Thailand Vector Map & Live Fleet SVG -->
             <div class="absolute inset-0 flex items-center justify-center">
-                <svg id="thailand-svg" viewBox="0 0 500 720" class="w-full h-full drop-shadow-[0_0_25px_rgba(14,165,233,0.2)]">
+                <svg id="thailand-svg" viewBox="0 0 500 720" class="w-full h-full ">
                     <defs>
                         <radialGradient id="hubGlow" cx="50%" cy="50%" r="50%">
                             <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.7"/>
@@ -125,7 +126,7 @@
 
                     <g id="pan-zoom-group">
                         <!-- Real GeoJSON Thailand Map -->
-                        <path d="M305.5,397.7 L259.6,377.7 L215.8,378.5 L223.3,344.1 L178.3,344.4 L174.2,392.5 L146.6,456.3 L130.0,494.9 L133.5,526.6 L166.8,527.9 L187.6,567.8 L196.8,605.7 L225.3,630.7 L256.3,635.8 L282.8,658.5 L266.1,676.4 L232.3,681.6 L228.3,659.2 L186.5,640.0 L177.6,647.8 L157.4,631.1 L148.7,609.4 L121.5,584.7 L96.7,564.0 L88.3,589.7 L78.6,565.4 L84.2,538.2 L99.3,496.2 L124.0,451.3 L152.1,410.6 L132.1,370.7 L132.9,350.4 L127.1,326.0 L93.0,291.3 L80.8,269.4 L98.4,261.3 L117.1,223.3 L96.2,194.4 L63.7,162.5 L39.0,124.2 L60.6,116.2 L83.9,69.0 L120.0,67.0 L149.9,48.1 L179.2,38.0 L201.3,51.5 L204.3,77.7 L238.8,79.7 L226.3,125.8 L227.5,165.0 L281.4,138.9 L296.7,146.6 L326.7,145.3 L337.0,130.1 L375.7,133.1 L414.6,168.6 L417.8,211.7 L459.2,249.8 L456.9,286.8 L440.3,306.5 L392.3,300.3 L326.2,308.6 L293.4,345.0 L305.5,397.7 Z" fill="#0f172a" stroke="#1d4ed8" stroke-width="1.4" />
+                        <path d="M305.5,397.7 L259.6,377.7 L215.8,378.5 L223.3,344.1 L178.3,344.4 L174.2,392.5 L146.6,456.3 L130.0,494.9 L133.5,526.6 L166.8,527.9 L187.6,567.8 L196.8,605.7 L225.3,630.7 L256.3,635.8 L282.8,658.5 L266.1,676.4 L232.3,681.6 L228.3,659.2 L186.5,640.0 L177.6,647.8 L157.4,631.1 L148.7,609.4 L121.5,584.7 L96.7,564.0 L88.3,589.7 L78.6,565.4 L84.2,538.2 L99.3,496.2 L124.0,451.3 L152.1,410.6 L132.1,370.7 L132.9,350.4 L127.1,326.0 L93.0,291.3 L80.8,269.4 L98.4,261.3 L117.1,223.3 L96.2,194.4 L63.7,162.5 L39.0,124.2 L60.6,116.2 L83.9,69.0 L120.0,67.0 L149.9,48.1 L179.2,38.0 L201.3,51.5 L204.3,77.7 L238.8,79.7 L226.3,125.8 L227.5,165.0 L281.4,138.9 L296.7,146.6 L326.7,145.3 L337.0,130.1 L375.7,133.1 L414.6,168.6 L417.8,211.7 L459.2,249.8 L456.9,286.8 L440.3,306.5 L392.3,300.3 L326.2,308.6 L293.4,345.0 L305.5,397.7 Z" fill="#22201d" stroke="#44403c" stroke-width="1.4" />
 
                         <!-- Radar Rings -->
                         <circle cx="176.4" cy="326.3" r="80" fill="none" stroke="rgba(56,189,248,0.12)" stroke-dasharray="4,4" />
@@ -141,7 +142,7 @@
                         <!-- Central Hub Marker -->
                         <circle cx="176.4" cy="326.3" r="20" fill="url(#hubGlow)" />
                         <circle cx="176.4" cy="326.3" r="5.5" fill="#38bdf8" stroke="#ffffff" stroke-width="2" />
-                        <rect x="114.4" y="306.3" width="54" height="15" rx="4" fill="#020617" fill-opacity="0.85" stroke="#38bdf8" stroke-width="0.6" />
+                        <rect x="114.4" y="306.3" width="54" height="15" rx="4" fill="#121110" fill-opacity="0.85" stroke="#38bdf8" stroke-width="0.6" />
                         <text x="119.4" y="317.3" fill="#38bdf8" font-size="9.5" font-weight="bold" class="mono">CTT HUB</text>
 
                         <!-- Moving Trucks Layer -->
@@ -153,7 +154,7 @@
             <!-- Floating KPI Overlay on Bottom -->
             <div class="p-4 z-10 grid grid-cols-2 sm:grid-cols-4 gap-3 pointer-events-none">
                 <div class="glass-panel p-3.5 rounded-xl">
-                    <p class="text-[11px] text-sky-300 mono">พัสดุทั้งหมดในระบบ</p>
+                    <p class="text-[11px] text-[#a8a29e] mono">พัสดุทั้งหมดในระบบ</p>
                     <p id="kpi-total" class="text-2xl font-bold text-white mt-0.5 mono">0</p>
                 </div>
                 <div class="glass-panel p-3.5 rounded-xl">
@@ -165,8 +166,8 @@
                     <p id="kpi-done" class="text-2xl font-bold text-emerald-400 mt-0.5 mono">0</p>
                 </div>
                 <div class="glass-panel p-3.5 rounded-xl">
-                    <p class="text-[11px] text-purple-300 mono">ระดับการซูมแผนที่</p>
-                    <p id="kpi-zoom" class="text-xl font-bold text-purple-400 mt-0.5 mono">100%</p>
+                    <p class="text-[11px] text-[#a8a29e] mono">ระดับการซูมแผนที่</p>
+                    <p id="kpi-zoom" class="text-xl font-bold text-[#d6d3d1] mt-0.5 mono">100%</p>
                 </div>
             </div>
         </div>
@@ -175,13 +176,13 @@
         <div class="glass-panel rounded-2xl p-4 flex flex-col justify-between h-[650px]">
             <div>
                 <div class="flex justify-between items-center border-b border-slate-700/80 pb-3 mb-3">
-                    <h2 class="text-sm font-bold text-sky-400 tracking-wider mono">รายการสถานะการขนส่งล่าสุด</h2>
+                    <h2 class="text-sm font-bold text-[#e7e5e4] tracking-wider mono">รายการสถานะการขนส่งล่าสุด</h2>
                     <span class="text-[10px] text-emerald-400 mono">อัปเดตอัตโนมัติ</span>
                 </div>
                 <div id="fleet-list" class="space-y-2.5 overflow-y-auto max-h-[520px] pr-1"></div>
             </div>
 
-            <div class="border-t border-slate-800 pt-3 mt-2 text-[11px] text-slate-400 mono flex justify-between">
+            <div class="border-t border-[#2a2723] pt-3 mt-2 text-[11px] text-slate-400 mono flex justify-between">
                 <span>HUB: NAKHON PATHOM</span>
                 <span class="text-emerald-400">● DB CONNECTED</span>
             </div>
@@ -270,12 +271,12 @@
             const list = allShipments.filter(s => s.destination === provName);
             document.getElementById('modal-title').innerText = `${provName} (${list.length} รายการ)`;
             document.getElementById('modal-body').innerHTML = list.map(s => `
-                <div class="bg-slate-900/90 p-2 rounded border border-slate-800 flex justify-between items-center">
+                <div class="bg-[#211f1c] p-2 rounded border border-[#2a2723] flex justify-between items-center">
                     <div>
                         <p class="mono font-bold text-white">${s.tracking_no}</p>
                         <p class="text-[10px] text-slate-400">${s.receiver}</p>
                     </div>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-sky-300">${s.status}</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-[#a8a29e]">${s.status}</span>
                 </div>
             `).join('') || '<p class="text-slate-400">ไม่มีรายการ</p>';
             document.getElementById('province-modal').classList.remove('hidden');
@@ -319,14 +320,14 @@
                 const isMoving = s.status === 'กำลังจัดส่ง';
                 const badgeClass = isMoving ? 'text-amber-400 border-amber-500/40 bg-amber-950/50' :
                                    s.status === 'จัดส่งสำเร็จ' ? 'text-emerald-400 border-emerald-500/40 bg-emerald-950/50' :
-                                   'text-sky-400 border-sky-500/40 bg-sky-950/50';
+                                   'text-[#e7e5e4] border-sky-500/40 bg-sky-950/50';
                 return `
-                    <div onclick="showProvinceDetail('${s.destination}')" class="cursor-pointer bg-slate-900/90 border border-slate-800 hover:border-sky-500/50 p-3 rounded-xl transition">
+                    <div onclick="showProvinceDetail('${s.destination}')" class="cursor-pointer bg-[#211f1c] border border-[#2a2723] hover:border-sky-500/50 p-3 rounded-xl transition">
                         <div class="flex justify-between items-center">
                             <span class="mono font-bold text-xs text-white">${s.tracking_no}</span>
                             <span class="text-[10px] px-2 py-0.5 rounded border ${badgeClass}">${s.status}</span>
                         </div>
-                        <p class="text-xs text-slate-300 mt-1.5">ปลายทาง: <span class="text-sky-300 font-medium">${s.destination}</span></p>
+                        <p class="text-xs text-slate-300 mt-1.5">ปลายทาง: <span class="text-[#a8a29e] font-medium">${s.destination}</span></p>
                         <div class="flex justify-between items-center mt-1 text-[10px] text-slate-500 mono">
                             <span>ผู้รับ: ${s.receiver}</span>
                             <span>${isMoving ? 'HWY SPEED: ' + (72 + Math.floor(Math.random()*15)) + ' km/h' : 'AT STATION'}</span>
@@ -368,7 +369,7 @@
                     circle.setAttribute("cy", dest.y);
                     circle.setAttribute("r", "4.5");
                     circle.setAttribute("fill", color);
-                    circle.setAttribute("stroke", "#020617");
+                    circle.setAttribute("stroke", "#121110");
                     circle.setAttribute("stroke-width", "1.5");
                     gNode.appendChild(circle);
 
@@ -380,7 +381,7 @@
                     bgRect.setAttribute("width", labelWidth);
                     bgRect.setAttribute("height", "14");
                     bgRect.setAttribute("rx", "3");
-                    bgRect.setAttribute("fill", "#020617");
+                    bgRect.setAttribute("fill", "#121110");
                     bgRect.setAttribute("fill-opacity", "0.82");
                     bgRect.setAttribute("stroke", "rgba(148, 163, 184, 0.35)");
                     bgRect.setAttribute("stroke-width", "0.5");
@@ -417,7 +418,15 @@
                 }
             });
 
+            let isPaused = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            window.toggleAnimation = function() {
+                isPaused = !isPaused;
+                const btn = document.getElementById('btn-pause');
+                btn.innerText = isPaused ? 'PLAY' : 'PAUSE';
+                btn.setAttribute('aria-pressed', String(isPaused));
+            };
             setInterval(() => {
+                if (isPaused) return;
                 activeTrucks.forEach(t => {
                     t.progress += t.speed;
                     if (t.progress > 1) t.progress = 0;
