@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CTT Logistic Tracking v2.2</title>
+    <title>CTT Logistics Management System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -24,20 +24,25 @@
                 <span class="bg-amber-500 text-blue-950 font-bold px-3 py-1 rounded-lg text-lg">CTT</span>
                 <div>
                     <h1 class="text-xl font-bold tracking-wide">CTT Logistic Tracking</h1>
-                    <p class="text-xs text-blue-200">ระบบบริหารจัดการและติดตามพัสดุภายในองค์กร (MySQL Edition)</p>
+                    <p class="text-xs text-blue-200">ระบบบริหารจัดการและติดตามสถานะพัสดุ</p>
                 </div>
             </div>
-            <div class="flex items-center space-x-2">
-                <a href="/live-map" target="_blank" class="bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold px-3 py-1.5 rounded-lg shadow transition">
-                    🛰️ Live Command Map
+            <div class="flex items-center space-x-2.5">
+                <a href="/live-map" target="_blank" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white text-xs font-medium px-3.5 py-2 rounded-lg transition inline-flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                    แผนที่ติดตามการเดินรถ
                 </a>
-                <a href="/track" target="_blank" class="bg-amber-500 hover:bg-amber-400 text-blue-950 text-xs font-bold px-3 py-1.5 rounded-lg shadow transition">
-                    🔍 หน้าเช็กพัสดุ (ลูกค้า)
+                <a href="/track" target="_blank" class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-semibold px-3.5 py-2 rounded-lg transition inline-flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    ตรวจสอบสถานะ (ลูกค้า)
                 </a>
-                <button onclick="exportCSV()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg shadow transition">
-                    📥 Export CSV
+                <button onclick="exportCSV()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium px-3.5 py-2 rounded-lg transition inline-flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    ส่งออก CSV
                 </button>
-                <span class="hidden sm:inline-block bg-emerald-500/20 border border-emerald-400 text-emerald-300 text-xs px-3 py-1 rounded-full">● API Online</span>
+                <span class="hidden sm:inline-flex items-center gap-1.5 bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs px-3 py-1.5 rounded-md">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span> ระบบปกติ
+                </span>
             </div>
         </div>
     </nav>
@@ -62,13 +67,13 @@
         <!-- Analytics Charts -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                <h3 class="text-sm font-semibold text-slate-700 mb-3">📊 สัดส่วนสถานะพัสดุ</h3>
+                <h3 class="text-sm font-semibold text-slate-700 mb-3">สัดส่วนสถานะพัสดุ</h3>
                 <div class="h-52 flex justify-center">
                     <canvas id="statusChart"></canvas>
                 </div>
             </div>
             <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                <h3 class="text-sm font-semibold text-slate-700 mb-3">📍 ปริมาณพัสดุแยกตามจังหวัดปลายทาง</h3>
+                <h3 class="text-sm font-semibold text-slate-700 mb-3">ปริมาณพัสดุแยกตามจังหวัดปลายทาง</h3>
                 <div class="h-52">
                     <canvas id="destChart"></canvas>
                 </div>
@@ -77,7 +82,7 @@
 
         <!-- Add Form -->
         <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h2 class="text-lg font-semibold text-slate-800 mb-4">+ บันทึกรับพัสดุเข้าระบบ</h2>
+            <h2 class="text-lg font-semibold text-slate-800 mb-4">บันทึกรับพัสดุเข้าระบบ</h2>
             <form id="add-form" class="grid grid-cols-1 md:grid-cols-5 gap-3">
                 <input type="text" id="tracking_no" placeholder="เลขพัสดุ (เช่น CTT2026003)" required class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-600 uppercase">
                 <input type="text" id="sender" placeholder="ชื่อผู้ส่ง / สาขาต้นทาง" required class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-600">
@@ -224,7 +229,7 @@
                     </td>
                     <td class="py-3 px-4 text-xs text-slate-400">${new Date(s.updated_at).toLocaleString('th-TH')}</td>
                     <td class="py-3 px-4 text-right space-x-2">
-                        <button onclick="printLabel('${s.tracking_no}')" class="text-blue-600 hover:text-blue-800 text-xs font-medium">🖨️ ใบปะหน้า</button>
+                        <button onclick="printLabel('${s.tracking_no}')" class="text-blue-600 hover:text-blue-800 text-xs font-medium">พิมพ์ใบปะหน้า</button>
                         <button onclick="deleteItem('${s.tracking_no}')" class="text-red-500 hover:text-red-700 text-xs font-medium">ลบ</button>
                     </td>
                 </tr>
