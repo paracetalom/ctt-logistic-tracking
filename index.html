@@ -1,179 +1,243 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CTT Logistic — ระบบติดตามสถานะพัสดุ</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTT Logistic Tracking v2.1</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Prompt', sans-serif; }
+        @media print {
+            body * { visibility: hidden; }
+            #print-area, #print-area * { visibility: visible; }
+            #print-area { position: absolute; left: 0; top: 0; width: 100%; }
+        }
+    </style>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen">
-  <nav class="bg-blue-900 text-white shadow-md">
-    <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-      <div class="flex items-center space-x-3">
-        <span class="bg-orange-500 text-white font-bold px-3 py-1 rounded-lg text-lg">CTT</span>
-        <div>
-          <h1 class="font-bold text-lg leading-tight">CTT Logistic Tracking</h1>
-          <p class="text-xs text-blue-200">ระบบบริหารจัดการและติดตามพัสดุภายในองค์กร</p>
+<body class="bg-slate-100 min-h-screen text-slate-800">
+    <!-- Navbar -->
+    <nav class="bg-blue-900 text-white shadow-lg">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <span class="bg-amber-500 text-blue-950 font-bold px-3 py-1 rounded-lg text-lg">CTT</span>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wide">CTT Logistic Tracking</h1>
+                    <p class="text-xs text-blue-200">ระบบบริหารจัดการและติดตามพัสดุภายในองค์กร (MySQL Edition)</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="exportCSV()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg shadow transition flex items-center gap-1">
+                    📥 Export CSV
+                </button>
+                <span class="bg-emerald-500/20 border border-emerald-400 text-emerald-300 text-xs px-3 py-1 rounded-full">● API Online</span>
+            </div>
         </div>
-      </div>
-      <span class="text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-3 py-1 rounded-full">
-        ● API Online
-      </span>
-    </div>
-  </nav>
+    </nav>
 
-  <main class="max-w-6xl mx-auto px-4 py-6 space-y-6">
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-        <p class="text-sm text-slate-500">พัสดุทั้งหมดในระบบ</p>
-        <p id="stat-total" class="text-3xl font-bold text-blue-900 mt-1">0</p>
-      </div>
-      <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-        <p class="text-sm text-slate-500">กำลังดำเนินการ / จัดส่ง</p>
-        <p id="stat-transit" class="text-3xl font-bold text-orange-500 mt-1">0</p>
-      </div>
-      <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-        <p class="text-sm text-slate-500">จัดส่งสำเร็จแล้ว</p>
-        <p id="stat-delivered" class="text-3xl font-bold text-emerald-600 mt-1">0</p>
-      </div>
-    </div>
-
-    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-      <h2 class="text-base font-bold text-slate-700 mb-4">+ บันทึกรับพัสดุเข้าระบบ</h2>
-      <form id="create-form" class="grid grid-cols-1 md:grid-cols-5 gap-3">
-        <input type="text" id="tracking_no" placeholder="เลขพัสดุ (เช่น CTT2026001)" required
-          class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <input type="text" id="sender" placeholder="ชื่อผู้ส่ง / สาขาต้นทาง" required
-          class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <input type="text" id="receiver" placeholder="ชื่อผู้รับ" required
-          class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <input type="text" id="destination" placeholder="จังหวัดปลายทาง" required
-          class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <button type="submit"
-          class="bg-blue-700 hover:bg-blue-800 text-white font-semibold rounded-lg px-4 py-2 text-sm transition">
-          บันทึกพัสดุ
-        </button>
-      </form>
-    </div>
-
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-      <div class="p-4 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3">
-        <h2 class="text-base font-bold text-slate-700">รายการพัสดุล่าสุด</h2>
-        <div class="flex w-full sm:w-auto gap-2">
-          <input type="text" id="search-input" placeholder="ค้นหาเลขพัสดุ, ผู้รับ, ปลายทาง..."
-            class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          <button onclick="loadShipments()" class="bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg text-sm font-medium">
-            รีเฟรช
-          </button>
+    <main class="max-w-6xl mx-auto px-4 py-8 space-y-6">
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-sm text-slate-500">พัสดุทั้งหมดในระบบ</p>
+                <p id="stat-total" class="text-3xl font-bold text-blue-900 mt-1">0</p>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-sm text-slate-500">กำลังดำเนินการ / จัดส่ง</p>
+                <p id="stat-active" class="text-3xl font-bold text-amber-600 mt-1">0</p>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-sm text-slate-500">จัดส่งสำเร็จแล้ว</p>
+                <p id="stat-done" class="text-3xl font-bold text-emerald-600 mt-1">0</p>
+            </div>
         </div>
-      </div>
 
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-          <thead>
-            <tr class="bg-slate-50 text-slate-600 text-xs uppercase border-b border-slate-200">
-              <th class="py-3 px-4">เลขพัสดุ</th>
-              <th class="py-3 px-4">ผู้ส่ง</th>
-              <th class="py-3 px-4">ผู้รับ</th>
-              <th class="py-3 px-4">ปลายทาง</th>
-              <th class="py-3 px-4">สถานะ</th>
-              <th class="py-3 px-4">อัปเดตล่าสุด</th>
-              <th class="py-3 px-4 text-right">จัดการ</th>
-            </tr>
-          </thead>
-          <tbody id="shipment-table" class="divide-y divide-slate-100 text-sm"></tbody>
-        </table>
-      </div>
+        <!-- Add Form -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <h2 class="text-lg font-semibold text-slate-800 mb-4">+ บันทึกรับพัสดุเข้าระบบ</h2>
+            <form id="add-form" class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <input type="text" id="tracking_no" placeholder="เลขพัสดุ (เช่น CTT2026002)" required class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-600 uppercase">
+                <input type="text" id="sender" placeholder="ชื่อผู้ส่ง / สาขาต้นทาง" required class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-600">
+                <input type="text" id="receiver" placeholder="ชื่อผู้รับ" required class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-600">
+                <input type="text" id="destination" placeholder="จังหวัดปลายทาง" required class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-600">
+                <button type="submit" class="bg-blue-700 hover:bg-blue-800 text-white font-medium rounded-lg px-4 py-2 text-sm transition">บันทึกพัสดุ</button>
+            </form>
+        </div>
+
+        <!-- Table & Search -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-5 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center gap-3">
+                <h2 class="text-lg font-semibold text-slate-800">รายการพัสดุล่าสุด</h2>
+                <input type="text" id="search" placeholder="ค้นหาเลขพัสดุ, ผู้รับ, ปลายทาง..." class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-full md:w-64 focus:outline-none focus:border-blue-600">
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-600 text-xs uppercase border-b border-slate-200">
+                            <th class="py-3 px-4">เลขพัสดุ</th>
+                            <th class="py-3 px-4">ผู้ส่ง</th>
+                            <th class="py-3 px-4">ผู้รับ</th>
+                            <th class="py-3 px-4">ปลายทาง</th>
+                            <th class="py-3 px-4">สถานะ</th>
+                            <th class="py-3 px-4">อัปเดตล่าสุด</th>
+                            <th class="py-3 px-4 text-right">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="shipment-list" class="divide-y divide-slate-100 text-sm"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Hidden Print Label Area -->
+    <div id="print-area" class="hidden p-8 border-2 border-black max-w-md mx-auto mt-10 bg-white">
+        <div class="border-b-2 border-black pb-3 mb-4 flex justify-between items-center">
+            <span class="text-2xl font-bold">CTT LOGISTIC</span>
+            <span class="text-sm font-mono border border-black px-2 py-0.5">EXPRESS</span>
+        </div>
+        <div class="mb-4">
+            <p class="text-xs text-gray-500">TRACKING NUMBER</p>
+            <p id="p-tracking" class="text-3xl font-bold font-mono tracking-wider"></p>
+        </div>
+        <div class="grid grid-cols-2 gap-4 border-t border-b border-black py-3 mb-4 text-sm">
+            <div>
+                <p class="font-bold">ผู้ส่ง (FROM):</p>
+                <p id="p-sender"></p>
+            </div>
+            <div>
+                <p class="font-bold">ผู้รับ (TO):</p>
+                <p id="p-receiver"></p>
+                <p id="p-dest" class="font-bold mt-1"></p>
+            </div>
+        </div>
+        <p class="text-xs text-center">ขอบคุณที่ใช้บริการ CTT Logistic</p>
     </div>
-  </main>
 
-  <script>
-    const API_URL = "/api/shipments";
+    <script>
+        let allShipments = [];
 
-    function getStatusBadge(status) {
-      if (status === "จัดส่งสำเร็จ") return "bg-emerald-100 text-emerald-700 border-emerald-200";
-      if (status === "กำลังจัดส่ง") return "bg-orange-100 text-orange-700 border-orange-200";
-      return "bg-blue-100 text-blue-700 border-blue-200";
-    }
+        async function loadShipments() {
+            const res = await fetch('/api/shipments');
+            allShipments = await res.json();
+            renderTable(allShipments);
+            updateStats(allShipments);
+        }
 
-    async function loadShipments() {
-      const q = document.getElementById("search-input").value.trim();
-      const url = q ? `${API_URL}?q=${encodeURIComponent(q)}` : API_URL;
-      const res = await fetch(url);
-      const data = await res.json();
+        function updateStats(data) {
+            document.getElementById('stat-total').innerText = data.length;
+            const done = data.filter(s => s.status === 'จัดส่งสำเร็จ').length;
+            document.getElementById('stat-done').innerText = done;
+            document.getElementById('stat-active').innerText = data.length - done;
+        }
 
-      document.getElementById("stat-total").textContent = data.length;
-      document.getElementById("stat-delivered").textContent = data.filter(i => i.status === "จัดส่งสำเร็จ").length;
-      document.getElementById("stat-transit").textContent = data.filter(i => i.status !== "จัดส่งสำเร็จ").length;
+        function getBadgeColor(status) {
+            if (status === 'จัดส่งสำเร็จ') return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+            if (status === 'กำลังจัดส่ง') return 'bg-amber-100 text-amber-800 border-amber-200';
+            return 'bg-blue-100 text-blue-800 border-blue-200';
+        }
 
-      const tbody = document.getElementById("shipment-table");
-      if (data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400">ไม่พบข้อมูลพัสดุ</td></tr>`;
-        return;
-      }
+        function renderTable(data) {
+            const tbody = document.getElementById('shipment-list');
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-400">ไม่พบข้อมูลพัสดุ</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.map(s => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="py-3 px-4 font-semibold text-blue-900">${s.tracking_no}</td>
+                    <td class="py-3 px-4">${s.sender}</td>
+                    <td class="py-3 px-4">${s.receiver}</td>
+                    <td class="py-3 px-4">${s.destination}</td>
+                    <td class="py-3 px-4">
+                        <select onchange="changeStatus('${s.tracking_no}', this.value)" class="text-xs font-medium px-2.5 py-1 rounded-full border cursor-pointer ${getBadgeColor(s.status)}">
+                            <option value="รับเข้าระบบ" ${s.status === 'รับเข้าระบบ' ? 'selected' : ''}>รับเข้าระบบ</option>
+                            <option value="กำลังจัดส่ง" ${s.status === 'กำลังจัดส่ง' ? 'selected' : ''}>กำลังจัดส่ง</option>
+                            <option value="จัดส่งสำเร็จ" ${s.status === 'จัดส่งสำเร็จ' ? 'selected' : ''}>จัดส่งสำเร็จ</option>
+                        </select>
+                    </td>
+                    <td class="py-3 px-4 text-xs text-slate-400">${new Date(s.updated_at).toLocaleString('th-TH')}</td>
+                    <td class="py-3 px-4 text-right space-x-2">
+                        <button onclick="printLabel('${s.tracking_no}')" class="text-blue-600 hover:text-blue-800 text-xs font-medium">🖨️ ใบปะหน้า</button>
+                        <button onclick="deleteItem('${s.tracking_no}')" class="text-red-500 hover:text-red-700 text-xs font-medium">ลบ</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
 
-      tbody.innerHTML = data.map(item => `
-        <tr class="hover:bg-slate-50">
-          <td class="py-3 px-4 font-bold text-blue-900">${item.tracking_no}</td>
-          <td class="py-3 px-4">${item.sender}</td>
-          <td class="py-3 px-4">${item.receiver}</td>
-          <td class="py-3 px-4">${item.destination}</td>
-          <td class="py-3 px-4">
-            <select onchange="updateStatus('${item.tracking_no}', this.value)"
-              class="text-xs font-semibold px-2.5 py-1 rounded-full border ${getStatusBadge(item.status)} cursor-pointer">
-              <option value="รับเข้าระบบ" ${item.status === "รับเข้าระบบ" ? "selected" : ""}>รับเข้าระบบ</option>
-              <option value="กำลังจัดส่ง" ${item.status === "กำลังจัดส่ง" ? "selected" : ""}>กำลังจัดส่ง</option>
-              <option value="จัดส่งสำเร็จ" ${item.status === "จัดส่งสำเร็จ" ? "selected" : ""}>จัดส่งสำเร็จ</option>
-            </select>
-          </td>
-          <td class="py-3 px-4 text-xs text-slate-500">${item.updated_at}</td>
-          <td class="py-3 px-4 text-right">
-            <button onclick="deleteShipment('${item.tracking_no}')"
-              class="text-red-500 hover:text-red-700 text-xs font-medium">ลบ</button>
-          </td>
-        </tr>
-      `).join("");
-    }
+        function printLabel(trackingNo) {
+            const item = allShipments.find(s => s.tracking_no === trackingNo);
+            if (!item) return;
+            document.getElementById('p-tracking').innerText = item.tracking_no;
+            document.getElementById('p-sender').innerText = item.sender;
+            document.getElementById('p-receiver').innerText = item.receiver;
+            document.getElementById('p-dest').innerText = 'ปลายทาง: ' + item.destination;
+            const printArea = document.getElementById('print-area');
+            printArea.classList.remove('hidden');
+            window.print();
+            printArea.classList.add('hidden');
+        }
 
-    document.getElementById("create-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const payload = {
-        tracking_no: document.getElementById("tracking_no").value,
-        sender: document.getElementById("sender").value,
-        receiver: document.getElementById("receiver").value,
-        destination: document.getElementById("destination").value,
-      };
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        alert(err.detail || "เกิดข้อผิดพลาด");
-        return;
-      }
-      e.target.reset();
-      loadShipments();
-    });
+        function exportCSV() {
+            if (allShipments.length === 0) return alert('ไม่มีข้อมูลสำหรับ Export');
+            const headers = ['Tracking No,Sender,Receiver,Destination,Status,Updated At'];
+            const rows = allShipments.map(s => `"${s.tracking_no}","${s.sender}","${s.receiver}","${s.destination}","${s.status}","${s.updated_at}"`);
+            const csvContent = "\uFEFF" + headers.concat(rows).join("\n");
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `ctt_shipments_${new Date().toISOString().slice(0,10)}.csv`;
+            link.click();
+        }
 
-    async function updateStatus(trackingNo, status) {
-      await fetch(`${API_URL}/${trackingNo}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      loadShipments();
-    }
+        document.getElementById('add-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                tracking_no: document.getElementById('tracking_no').value.trim(),
+                sender: document.getElementById('sender').value.trim(),
+                receiver: document.getElementById('receiver').value.trim(),
+                destination: document.getElementById('destination').value.trim()
+            };
+            const res = await fetch('/api/shipments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                alert(err.detail || 'เกิดข้อผิดพลาด');
+                return;
+            }
+            e.target.reset();
+            loadShipments();
+        });
 
-    async function deleteShipment(trackingNo) {
-      if (!confirm(`ต้องการลบเลขพัสดุ ${trackingNo} ใช่หรือไม่?`)) return;
-      await fetch(`${API_URL}/${trackingNo}`, { method: "DELETE" });
-      loadShipments();
-    }
+        async function changeStatus(trackingNo, newStatus) {
+            await fetch(`/api/shipments/${trackingNo}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            loadShipments();
+        }
 
-    document.getElementById("search-input").addEventListener("input", loadShipments);
-    loadShipments();
-  </script>
+        async function deleteItem(trackingNo) {
+            if (!confirm(`ยืนยันการลบรายการ ${trackingNo}?`)) return;
+            await fetch(`/api/shipments/${trackingNo}`, { method: 'DELETE' });
+            loadShipments();
+        }
+
+        document.getElementById('search').addEventListener('input', (e) => {
+            const q = e.target.value.toLowerCase();
+            const filtered = allShipments.filter(s =>
+                s.tracking_no.toLowerCase().includes(q) ||
+                s.sender.toLowerCase().includes(q) ||
+                s.receiver.toLowerCase().includes(q) ||
+                s.destination.toLowerCase().includes(q)
+            );
+            renderTable(filtered);
+        });
+
+        loadShipments();
+    </script>
 </body>
 </html>
