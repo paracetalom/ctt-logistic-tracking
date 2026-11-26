@@ -1,10 +1,6 @@
 import os
 import time
-import json
-import hmac
-import hashlib
-import base64
-import random
+import secrets
 import pymysql
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Header, Depends
@@ -17,7 +13,9 @@ DB_HOST = os.getenv("DB_HOST", "db")
 DB_USER = os.getenv("DB_USER", "ctt_dev")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "Ctt@2026#Dev")
 DB_NAME = os.getenv("DB_NAME", "ctt_logistic")
-SECRET_KEY = b"CTT_LOGISTICS_ENTERPRISE_2026_KEY"
+
+# เก็บ Active Session Token ชั่วคราวใน Memory (map token -> user dict)
+ACTIVE_SESSIONS = {}
 
 def get_db():
     return pymysql.connect(
@@ -36,92 +34,7 @@ def init_db():
         try:
             conn = get_db()
             with conn.cursor() as cursor:
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS users (
-                        id INT NOT NULL AUTO_INCREMENT,
-                        username VARCHAR(50) NOT NULL,
-                        password_hash VARCHAR(255) NOT NULL,
-                        full_name VARCHAR(100) NOT NULL,
-                        role ENUM('admin','shipping','tracking') NOT NULL,
-                        branch VARCHAR(100) DEFAULT 'สำนักงานใหญ่ (นครปฐม)',
-                        is_active TINYINT(1) DEFAULT 1,
-                        created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-                        PRIMARY KEY (id),
-                        UNIQUE KEY username (username)
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-                """)
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS vehicles (
-                        id INT NOT NULL AUTO_INCREMENT,
-                        plate_number VARCHAR(20) NOT NULL,
-                        driver_name VARCHAR(100) NOT NULL,
-                        driver_phone VARCHAR(20) DEFAULT NULL,
-                        vehicle_type VARCHAR(50) DEFAULT 'รถกระบะตู้ทึบ 4 ล้อ',
-                        status ENUM('พร้อมใช้งาน','กำลังวิ่งงาน','ซ่อมบำรุง') DEFAULT 'พร้อมใช้งาน',
-                        created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-                        PRIMARY KEY (id),
-                        UNIQUE KEY plate_number (plate_number)
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-                """)
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS shipments (
-                        id INT NOT NULL AUTO_INCREMENT,
-                        tracking_no VARCHAR(50) NOT NULL,
-                        sender VARCHAR(100) NOT NULL,
-                        receiver VARCHAR(100) NOT NULL,
-                        destination VARCHAR(100) NOT NULL,
-                        status VARCHAR(50) DEFAULT 'รับเข้าระบบ',
-                        updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                        created_by INT DEFAULT 2,
-                        vehicle_id INT DEFAULT 1,
-                        receiver_phone VARCHAR(20) DEFAULT '080-000-0000',
-                        weight_kg DECIMAL(6,2) DEFAULT 5.00,
-                        PRIMARY KEY (id),
-                        UNIQUE KEY tracking_no (tracking_no),
-                        KEY fk_shipments_user (created_by),
-                        KEY fk_shipments_vehicle (vehicle_id),
-                        CONSTRAINT fk_shipments_user FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL,
-                        CONSTRAINT fk_shipments_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles (id) ON DELETE SET NULL
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-                """)
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS shipment_logs (
-                        id INT NOT NULL AUTO_INCREMENT,
-                        shipment_id INT NOT NULL,
-                        status VARCHAR(50) NOT NULL,
-                        location VARCHAR(150) NOT NULL,
-                        remark VARCHAR(255) DEFAULT NULL,
-                        updated_by INT DEFAULT NULL,
-                        created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-                        PRIMARY KEY (id),
-                        KEY fk_logs_shipment (shipment_id),
-                        KEY fk_logs_user (updated_by),
-                        CONSTRAINT fk_logs_shipment FOREIGN KEY (shipment_id) REFERENCES shipments (id) ON DELETE CASCADE,
-                        CONSTRAINT fk_logs_user FOREIGN KEY (updated_by) REFERENCES users (id) ON DELETE SET NULL
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-                """)
-
-                cursor.execute("SELECT COUNT(*) AS cnt FROM users")
-                if cursor.fetchone()["cnt"] == 0:
-                    cursor.executemany(
-                        "INSERT INTO users (username, password_hash, full_name, role, branch) VALUES (%s, %s, %s, %s, %s)",
-                        [
-                            ("admin", "123456", "คุณกิตติพงษ์ (IT Admin)", "admin", "สำนักงานใหญ่ (นครปฐม)"),
-                            ("shipping01", "123456", "คุณสุดารัตน์ (ฝ่ายจัดส่ง)", "shipping", "ศูนย์กระจายสินค้านครปฐม"),
-                            ("tracking01", "123456", "คุณธนพล (ฝ่ายควบคุมรถ)", "tracking", "ศูนย์ควบคุมการเดินรถ"),
-                        ],
-                    )
-
-                cursor.execute("SELECT COUNT(*) AS cnt FROM vehicles")
-                if cursor.fetchone()["cnt"] == 0:
-                    cursor.executemany(
-                        "INSERT INTO vehicles (plate_number, driver_name, driver_phone, vehicle_type, status) VALUES (%s, %s, %s, %s, %s)",
-                        [
-                            ("70-4512 นฐ", "สมศักดิ์ ขับดี", "081-234-5678", "รถบรรทุก 6 ล้อตู้ทึบ", "กำลังวิ่งงาน"),
-                            ("บบ-8821 กทม", "วิรัช ปลอดภัย", "089-876-5432", "รถกระบะตู้ทึบ 4 ล้อ", "กำลังวิ่งงาน"),
-                            ("71-1094 ชบ", "มานะ ตรงเวลา", "086-555-4321", "รถบรรทุก 10 ล้อ", "พร้อมใช้งาน"),
-                        ],
-                    )
+                cursor.execute("SELECT 1")
             conn.close()
             break
         except Exception:
@@ -145,7 +58,6 @@ class StatusUpdate(BaseModel):
     status: str
     location: Optional[str] = None
     remark: Optional[str] = None
-    note: Optional[str] = None
 
 class UserCreate(BaseModel):
     username: str
@@ -172,6 +84,9 @@ def require_roles(allowed_roles: list):
             )
         return user
     return role_checker
+
+import hmac, hashlib, base64, json
+SECRET_KEY = b"CTT_LOGISTICS_ENTERPRISE_2026_KEY"
 
 def make_token(user_dict: dict) -> str:
     payload = base64.urlsafe_b64encode(json.dumps(user_dict, ensure_ascii=False).encode()).decode()
@@ -207,7 +122,10 @@ def login(req: LoginRequest):
     return {"token": token, "user": user}
 
 @app.post("/api/logout")
-def logout():
+def logout(authorization: Optional[str] = Header(None)):
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ", 1)[1].strip()
+        ACTIVE_SESSIONS.pop(token, None)
     return {"message": "ออกจากระบบเรียบร้อย"}
 
 @app.get("/api/me")
@@ -253,40 +171,6 @@ def create_user(item: UserCreate, user: dict = Depends(require_roles(["admin"]))
     return {"message": "สร้างบัญชีผู้ใช้งานสำเร็จ"}
 
 # --- Shipments & Logs Endpoints ---
-@app.get("/api/public/track/{tracking_no}")
-def public_track_shipment(tracking_no: str):
-    clean_no = tracking_no.upper().strip()
-    conn = get_db()
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute(
-                """SELECT s.id, s.tracking_no, s.sender, s.receiver, s.destination, s.status,
-                          s.weight_kg, s.updated_at,
-                          v.plate_number AS plate_no, v.driver_name, v.vehicle_type
-                   FROM shipments s
-                   LEFT JOIN vehicles v ON s.vehicle_id = v.id
-                   WHERE s.tracking_no = %s""",
-                (clean_no,)
-            )
-            shipment = cursor.fetchone()
-            if not shipment:
-                raise HTTPException(status_code=404, detail="ไม่พบหมายเลขพัสดุนี้ในระบบ")
-
-            cursor.execute(
-                """SELECT l.status, l.location, l.remark, l.remark AS note, l.created_at,
-                          u.full_name AS updated_by_name
-                   FROM shipment_logs l
-                   LEFT JOIN users u ON l.updated_by = u.id
-                   WHERE l.shipment_id = %s
-                   ORDER BY l.created_at DESC, l.id DESC""",
-                (shipment["id"],)
-            )
-            logs = cursor.fetchall()
-            shipment.pop("id", None)
-            return {"shipment": shipment, "logs": logs}
-    finally:
-        conn.close()
-
 @app.get("/api/shipments")
 def list_shipments():
     conn = get_db()
@@ -307,10 +191,9 @@ def list_shipments():
 
 @app.get("/api/shipments/{tracking_no}/logs")
 def get_shipment_logs(tracking_no: str):
-    clean_no = tracking_no.upper().strip()
     conn = get_db()
     with conn.cursor() as cursor:
-        cursor.execute("SELECT id FROM shipments WHERE tracking_no = %s", (clean_no,))
+        cursor.execute("SELECT id FROM shipments WHERE tracking_no = %s", (tracking_no.upper(),))
         shipment = cursor.fetchone()
         if not shipment:
             conn.close()
@@ -330,9 +213,8 @@ def get_shipment_logs(tracking_no: str):
 
 @app.post("/api/shipments")
 def create_shipment(item: ShipmentCreate, user: dict = Depends(require_roles(["admin", "shipping"]))):
+    import random
     t_no = item.tracking_no.upper().strip() if item.tracking_no else f"CTT2026{random.randint(100000, 999999)}"
-    receiver_phone = (item.receiver_phone or "").strip() or "080-000-0000"
-    weight_kg = item.weight_kg if item.weight_kg is not None else 5.0
     conn = get_db()
     try:
         with conn.cursor() as cursor:
@@ -342,7 +224,7 @@ def create_shipment(item: ShipmentCreate, user: dict = Depends(require_roles(["a
                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
                 (
                     t_no, item.sender, item.receiver, item.destination,
-                    receiver_phone, weight_kg, user["id"], item.vehicle_id
+                    item.receiver_phone, item.weight_kg, user["id"], item.vehicle_id
                 )
             )
             shipment_id = cursor.lastrowid
@@ -355,14 +237,13 @@ def create_shipment(item: ShipmentCreate, user: dict = Depends(require_roles(["a
         conn.close()
         raise HTTPException(status_code=400, detail="เลขพัสดุนี้มีอยู่ในระบบแล้ว")
     conn.close()
-    return {"message": "บันทึกข้อมูลพัสดุสำเร็จ", "tracking_no": t_no}
+    return {"message": "บันทึกข้อมูลพัสดุสำเร็จ"}
 
 @app.put("/api/shipments/{tracking_no}")
 def update_status(tracking_no: str, item: StatusUpdate, user: dict = Depends(require_roles(["admin", "shipping", "tracking"]))):
-    clean_no = tracking_no.upper().strip()
     conn = get_db()
     with conn.cursor() as cursor:
-        cursor.execute("SELECT id, destination FROM shipments WHERE tracking_no = %s", (clean_no,))
+        cursor.execute("SELECT id, destination FROM shipments WHERE tracking_no = %s", (tracking_no.upper(),))
         shipment = cursor.fetchone()
         if not shipment:
             conn.close()
@@ -370,15 +251,15 @@ def update_status(tracking_no: str, item: StatusUpdate, user: dict = Depends(req
 
         cursor.execute(
             "UPDATE shipments SET status = %s WHERE tracking_no = %s",
-            (item.status, clean_no)
+            (item.status, tracking_no.upper())
         )
 
         # กำหนดจุดเช็กอินอัตโนมัติหากไม่ได้ระบุมา
         default_loc = f"ปลายทาง จ.{shipment['destination']}" if item.status == "จัดส่งสำเร็จ" else (
             f"ระหว่างขนส่งมุ่งหน้า จ.{shipment['destination']}" if item.status == "กำลังจัดส่ง" else user.get("branch", "ศูนย์คัดแยกสินค้า")
         )
-        loc = (item.location or "").strip() or default_loc
-        remark = (item.remark or item.note or "").strip() or f"อัปเดตสถานะโดย {user['full_name']}"
+        loc = item.location if item.location else default_loc
+        remark = item.remark if item.remark else f"อัปเดตสถานะโดย {user['full_name']}"
 
         cursor.execute(
             """INSERT INTO shipment_logs (shipment_id, status, location, remark, updated_by)
@@ -390,10 +271,9 @@ def update_status(tracking_no: str, item: StatusUpdate, user: dict = Depends(req
 
 @app.delete("/api/shipments/{tracking_no}")
 def delete_shipment(tracking_no: str, user: dict = Depends(require_roles(["admin"]))):
-    clean_no = tracking_no.upper().strip()
     conn = get_db()
     with conn.cursor() as cursor:
-        cursor.execute("DELETE FROM shipments WHERE tracking_no = %s", (clean_no,))
+        cursor.execute("DELETE FROM shipments WHERE tracking_no = %s", (tracking_no.upper(),))
     conn.close()
     return {"message": "ลบรายการสำเร็จ (สิทธิ์ Admin)"}
 

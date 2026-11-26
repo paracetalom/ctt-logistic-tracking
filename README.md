@@ -1,76 +1,19 @@
-# 📦 CTT Logistic Tracking System (Enterprise RBAC)
+# 📦 CTT Logistic Tracking System
 
-ระบบบริหารจัดการและติดตามสถานะพัสดุระดับองค์กร พัฒนาด้วย **FastAPI**, **Tailwind CSS**, **Chart.js** และ **MySQL 8.0** รองรับการควบคุมสิทธิ์ตามบทบาท (**Role-Based Access Control - RBAC**) การบันทึกไทม์ไลน์การขนส่งจริง การจัดสรรรถขนส่ง และการ Deploy ผ่าน **Docker Compose**
-
----
+ระบบบริหารจัดการและติดตามสถานะพัสดุภายในองค์กร พัฒนาด้วย **FastAPI**, **Tailwind CSS** และ **MySQL 8.0** พร้อมโครงสร้างการ Deploy ผ่าน **Docker Compose** และ **IIS Reverse Proxy**
 
 ## 🏗️ System Architecture
+- **Frontend & API:** FastAPI + Tailwind CSS (Docker Port 8080)
+- **Database:** MySQL 8.0 พร้อม Docker Volume เก็บข้อมูลถาวร (Port 3306)
+- **Web Server / Proxy:** IIS Reverse Proxy รับหน้าด่านที่ Port 80
 
-- **Backend API & Web Portal (`web`):** FastAPI + Uvicorn (Container Port `8000` → Host Port `8080`)
-  - `/` — ระบบปฏิบัติการหลักสำหรับเจ้าหน้าที่ (RBAC Login, Dashboard สถิติ, ฟอร์มรับพัสดุและจัดสรรรถขนส่ง, ตารางจัดการสถานะ, พิมพ์ใบปะหน้า QR Code, Export CSV และจัดการบัญชีผู้ใช้)
-  - `/track` — พอร์ทัลติดตามสถานะพัสดุสำหรับลูกค้า (Public Tracking Portal แสดงข้อมูลรถขนส่ง พนักงานขับรถ น้ำหนัก และไทม์ไลน์จริงจาก `shipment_logs`)
-  - `/live-map` — แผนที่ติดตามเส้นทางขนส่งและกระจายสินค้าทั่วประเทศแบบ Interactive SVG
-  - `/docs` — เอกสารทดสอบ API อัตโนมัติ (Swagger UI)
-- **Database (`db`):** MySQL 8.0 (`ctt_logistic`) บน Port `3306` พร้อม Persistent Volume
-
----
-
-## 🗄️ MySQL 4-Table Database Architecture
-
-ฐานข้อมูล `ctt_logistic` ออกแบบแบบ Relational ประกอบด้วย 4 ตารางหลักที่เชื่อมโยงกันด้วย Foreign Keys:
-
-| ตาราง | หน้าที่หลัก | คอลัมน์สำคัญและความสัมพันธ์ |
-|---|---|---|
-| `users` | บัญชีผู้ใช้งานและสิทธิ์ RBAC | `id` (PK), `username` (UNIQUE), `password_hash`, `full_name`, `role` (`ENUM('admin','shipping','tracking')`), `branch`, `is_active`, `created_at` |
-| `vehicles` | ข้อมูลรถขนส่งและพนักงานขับรถ | `id` (PK), `plate_number` (UNIQUE), `driver_name`, `driver_phone`, `vehicle_type`, `status` (`ENUM('พร้อมใช้งาน','กำลังวิ่งงาน','ซ่อมบำรุง')`), `created_at` |
-| `shipments` | ข้อมูลพัสดุหลักในระบบ | `id` (PK), `tracking_no` (UNIQUE), `sender`, `receiver`, `destination`, `status`, `receiver_phone`, `weight_kg`, `updated_at`, `created_by` (FK → `users.id`), `vehicle_id` (FK → `vehicles.id`) |
-| `shipment_logs` | ประวัติและไทม์ไลน์การอัปเดตสถานะจริง | `id` (PK), `shipment_id` (FK → `shipments.id` `ON DELETE CASCADE`), `status`, `location`, `remark`, `updated_by` (FK → `users.id`), `created_at` |
-
----
-
-## 🔐 RBAC Roles & Test Accounts (บัญชีทดสอบ 3 ตำแหน่ง)
-
-ระบบยืนยันตัวตนด้วย Signed Bearer Token (`HMAC-SHA256`) แยกสิทธิ์การทำงานทั้งระดับ Backend API และหน้าเว็บ UI ดังนี้:
-
-| ตำแหน่ง (`role`) | Username | Password | สิทธิ์การใช้งาน |
-|---|---|---|---|
-| **IT Admin** (`admin`) | `admin` | `123456` | สิทธิ์เต็มระบบ: สร้าง/ดู/อัปเดตสถานะ/ลบพัสดุ และจัดการบัญชีผู้ใช้งาน (`GET/POST /api/users`) |
-| **ฝ่ายจัดส่ง** (`shipping`) | `shipping01` | `123456` | บันทึกรับพัสดุเข้าระบบ เลือกรถขนส่ง (`POST /api/shipments`) และอัปเดตสถานะ (ห้ามลบพัสดุและห้ามจัดการผู้ใช้) |
-| **ฝ่ายควบคุมรถ** (`tracking`) | `tracking01` | `123456` | ดูรายการพัสดุและอัปเดตสถานะ/จุดเช็กอิน (`PUT /api/shipments/{tracking_no}`) ลง `shipment_logs` (ห้ามสร้างหรือลบพัสดุ) |
-
----
+## ✨ Key Features
+- **Dashboard & Real-time Tracking:** สรุปยอดพัสดุทั้งหมด กำลังจัดส่ง และจัดส่งสำเร็จ พร้อมระบบค้นหาทันที
+- **Full CRUD Operations:** บันทึกรับพัสดุ อัปเดตสถานะการจัดส่ง และลบรายการ
+- **Shipping Label Print & CSV Export:** สั่งพิมพ์ใบปะหน้าพัสดุและดาวน์โหลดรายงานข้อมูลเป็นไฟล์ CSV (รองรับภาษาไทยใน Excel)
+- **Auto API Documentation:** เข้าถึงหน้าทดสอบ API อัตโนมัติได้ที่ `/docs`
 
 ## 🚀 Quick Start (Docker Compose)
-
-1. Clone repository และเข้าสู่โฟลเดอร์โปรเจกต์:
-   ```bash
-   git clone https://github.com/paracetalom/ctt-logistic-tracking.git
-   cd ctt-logistic-tracking
-   ```
-2. Build และรันคอนเทนเนอร์ (`db` และ `web`):
-   ```bash
-   docker compose up -d --build
-   ```
-3. เข้าใช้งานระบบ:
-   - หน้าจัดการเจ้าหน้าที่: `http://localhost:8080/`
-   - หน้าเช็กพัสดุลูกค้า: `http://localhost:8080/track`
-   - แผนที่เดินรถ: `http://localhost:8080/live-map`
-   - API Docs: `http://localhost:8080/docs`
-
----
-
-## 🛡️ Automated RBAC & Security Audit (`test_rbac.py`)
-
-สคริปต์ `test_rbac.py` ใช้สำหรับตรวจสอบความปลอดภัยของระบบ RBAC และ End-to-End Flow ทั้ง 6 รายการโดยอัตโนมัติ (รันหลังจากที่คอนเทนเนอร์พร้อมทำงานบน `http://localhost:8080`):
-
-```bash
-python3 test_rbac.py
-```
-
-**รายการตรวจสอบทั้ง 6 ข้อ:**
-1. ล็อกอินแยก Session ทั้ง 3 บัญชี (`admin`, `shipping01`, `tracking01`) สำเร็จ
-2. ป้องกัน `tracking` แอบยิง API `POST /api/shipments` สร้างพัสดุ (ระบบดีดกลับ HTTP `403`)
-3. อนุญาตให้ `shipping` สร้างพัสดุจริง (`POST /api/shipments`) พร้อมออกเลขพัสดุอัตโนมัติ (HTTP `200`)
-4. อนุญาตให้ `tracking` อัปเดตสถานะเป็น `กำลังจัดส่ง` (`PUT /api/shipments/{tracking_no}`) และบันทึกลง `shipment_logs` (HTTP `200`)
-5. ป้องกัน `shipping` แอบยิง API `DELETE /api/shipments/{tracking_no}` ลบพัสดุ (ระบบดีดกลับ HTTP `403`)
-6. อนุญาตให้ `admin` ลบพัสดุทดสอบและล้างข้อมูล Log ที่เกี่ยวข้องผ่าน `ON DELETE CASCADE` (HTTP `200`)
+1. Clone repository: `git clone [https://github.com/paracetalom/ctt-logistic-tracking.git](https://github.com/paracetalom/ctt-logistic-tracking.git)`
+2. เข้าโฟลเดอร์: `cd ctt-logistic-tracking`
+3. รันระบบ: `docker compose up -d --build`
