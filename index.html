@@ -241,6 +241,24 @@
                             <option value="สงขลา">สงขลา</option>
                         </select>
                     </div>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <label for="receiver_phone" class="block text-xs font-medium text-slate-700 mb-1">เบอร์โทรผู้รับ</label>
+                            <input type="tel" id="receiver_phone" placeholder="08X-XXX-XXXX"
+                                   class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#003399]">
+                        </div>
+                        <div>
+                            <label for="weight_kg" class="block text-xs font-medium text-slate-700 mb-1">น้ำหนัก (กก.)</label>
+                            <input type="number" step="0.1" min="0.1" id="weight_kg" value="1.0"
+                                   class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#003399]">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="vehicle_id" class="block text-xs font-medium text-slate-700 mb-1">รถขนส่งที่รับผิดชอบ</label>
+                        <select id="vehicle_id" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#003399]">
+                            <option value="">-- รอจัดสรรรถขนส่ง --</option>
+                        </select>
+                    </div>
                     <button type="submit" class="w-full bg-[#003399] hover:bg-[#002266] text-white font-semibold text-sm py-2.5 rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#003399]">
                         ออกเลขพัสดุและบันทึกข้อมูล
                     </button>
@@ -358,6 +376,49 @@
             }
         });
 
+        
+        async function updateStatusWithLog(trackingNo, newStatus) {
+            const defaultLoc = newStatus === 'กำลังจัดส่ง'
+                ? 'ศูนย์คัดแยกสินค้าหลัก (อยู่ระหว่างนำจ่าย)'
+                : (newStatus === 'จัดส่งสำเร็จ' ? 'ปลายทางผู้รับ (เซ็นรับพัสดุเรียบร้อย)' : 'สาขาต้นทาง CTT Logistics');
+            const locationInput = prompt('อัปเดตสถานะพัสดุ ' + trackingNo + ' เป็น "' + newStatus + '"\nระบุสถานที่เช็กอินปัจจุบัน:', defaultLoc);
+            if (locationInput === null) {
+                fetchShipments();
+                return;
+            }
+            const noteInput = prompt('หมายเหตุเพิ่มเติม (ถ้ามี):', newStatus === 'จัดส่งสำเร็จ' ? 'ผู้รับได้รับพัสดุครบถ้วน' : 'อัปเดตสถานะผ่านระบบปฏิบัติการ CTT');
+            if (noteInput === null) {
+                fetchShipments();
+                return;
+            }
+            const res = await fetch('/api/shipments/' + trackingNo, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    status: newStatus,
+                    location: locationInput.trim() || defaultLoc,
+                    remark: noteInput.trim()
+                })
+            });
+            if (res.ok) {
+                showToast(`อัปเดตสถานะ ${trackingNo} เป็น "${newStatus}" และบันทึก Log แล้ว`);
+            }
+            fetchShipments();
+        }
+
+        async function loadVehiclesDropdown() {
+            try {
+                const res = await fetch('/api/vehicles');
+                if (!res.ok) return;
+                const vehicles = await res.json();
+                const sel = document.getElementById('vehicle_id');
+                if (!sel) return;
+                sel.innerHTML = '<option value="">-- รอจัดสรรรถขนส่ง --</option>' +
+                    vehicles.map(v => `<option value="${v.id}">${v.plate_number || v.plate_no} (${v.vehicle_type} - ${v.driver_name})</option>`).join('');
+            } catch (e) {}
+        }
+        window.addEventListener('DOMContentLoaded', loadVehiclesDropdown);
+
         async function fetchShipments() {
             const res = await fetch('/api/shipments');
             allShipments = await res.json();
@@ -449,17 +510,20 @@
                             <span class="mx-1 text-slate-400">→</span>
                             <span class="font-medium text-slate-900">${s.receiver}</span>
                         </td>
-                        <td class="py-3 px-4 text-xs font-medium text-slate-900">${s.destination}</td>
+                        <td class="py-3 px-4 text-xs font-medium text-slate-900">
+                            <div>${s.destination}</div>
+                            ${s.vehicle_plate ? `<div class="text-[11px] font-normal text-slate-500 mt-0.5">${s.vehicle_plate}</div>` : ''}
+                        </td>
                         <td class="py-3 px-4">
-                            <select onchange="updateStatus('${s.tracking_no}', this.value)" class="text-xs font-semibold px-2 py-1 rounded-md border ${badgeStyle} focus:outline-none cursor-pointer">
+                            <select onchange="updateStatusWithLog('${s.tracking_no}', this.value)" class="text-xs font-semibold px-2 py-1 rounded-md border ${badgeStyle} focus:outline-none cursor-pointer">
                                 <option value="รับเข้าระบบ" ${s.status === 'รับเข้าระบบ' ? 'selected' : ''}>รับเข้าระบบ</option>
                                 <option value="กำลังจัดส่ง" ${s.status === 'กำลังจัดส่ง' ? 'selected' : ''}>กำลังจัดส่ง</option>
                                 <option value="จัดส่งสำเร็จ" ${s.status === 'จัดส่งสำเร็จ' ? 'selected' : ''}>จัดส่งสำเร็จ</option>
                             </select>
                         </td>
                         <td class="py-3 px-4 text-right space-x-1.5">
-                            <button onclick='openLabel(${JSON.stringify(s)})' class="text-xs font-medium px-2.5 py-1 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 transition">ใบปะหน้า</button>
-                            <button onclick="deleteShipment('${s.tracking_no}')" class="text-xs font-medium px-2 py-1 rounded-md text-[#DC0000] hover:bg-red-50 transition">ลบ</button>
+                            <button onclick="openLabelByTracking('${s.tracking_no}')" class="text-xs font-medium px-2.5 py-1 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 transition">ใบปะหน้า</button>
+                            <button onclick="deleteShipment('${s.tracking_no}')" style="${CURRENT_USER && CURRENT_USER.role === 'admin' ? '' : 'display:none'}" class="btn-delete-shipment text-xs font-medium px-2 py-1 rounded-md text-[#DC0000] hover:bg-red-50 transition">ลบ</button>
                         </td>
                     </tr>
                 `;
@@ -468,10 +532,14 @@
 
         document.getElementById('shipment-form').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const vId = document.getElementById('vehicle_id').value;
             const payload = {
                 sender: document.getElementById('sender').value.trim(),
                 receiver: document.getElementById('receiver').value.trim(),
-                destination: document.getElementById('destination').value
+                destination: document.getElementById('destination').value,
+                receiver_phone: document.getElementById('receiver_phone').value.trim() || null,
+                weight_kg: parseFloat(document.getElementById('weight_kg').value) || 1.0,
+                vehicle_id: vId ? parseInt(vId) : null
             };
             const res = await fetch('/api/shipments', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
@@ -486,19 +554,18 @@
             }
         });
 
-        async function updateStatus(trackingNo, newStatus) {
-            await fetch(`/api/shipments/${trackingNo}`, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: newStatus })
-            });
-            showToast(`อัปเดตสถานะ ${trackingNo} เป็น "${newStatus}"`);
+        async function deleteShipment(trackingNo) {
+            if (!confirm(`ยืนยันการลบรายการพัสดุ ${trackingNo} ออกจากระบบ?`)) return;
+            const res = await fetch(`/api/shipments/${trackingNo}`, { method: 'DELETE' });
+            if (res.ok) {
+                showToast(`ลบรายการ ${trackingNo} เรียบร้อยแล้ว`);
+            }
             fetchShipments();
         }
 
-        async function deleteShipment(trackingNo) {
-            if (!confirm(`ยืนยันการลบรายการพัสดุ ${trackingNo} ออกจากระบบ?`)) return;
-            await fetch(`/api/shipments/${trackingNo}`, { method: 'DELETE' });
-            showToast(`ลบรายการ ${trackingNo} เรียบร้อยแล้ว`);
-            fetchShipments();
+        function openLabelByTracking(trackingNo) {
+            const s = allShipments.find(item => item.tracking_no === trackingNo);
+            if (s) openLabel(s);
         }
 
         function openLabel(s) {
@@ -506,7 +573,7 @@
             document.getElementById('lbl-sender').innerText = s.sender;
             document.getElementById('lbl-receiver').innerText = s.receiver;
             document.getElementById('lbl-tracking').innerText = s.tracking_no;
-            const trackUrl = `http://192.168.10.131/track?id=${s.tracking_no}`;
+            const trackUrl = `${window.location.origin}/track?id=${s.tracking_no}`;
             document.getElementById('lbl-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(trackUrl)}`;
             document.getElementById('label-modal').classList.remove('hidden');
         }
@@ -541,6 +608,8 @@ window.fetch = async (url, options = {}) => {
   }
   const response = await origFetch(url, options);
   if (response.status === 401 && url !== '/api/login' && url !== '/api/me') {
+    AUTH_TOKEN = '';
+    CURRENT_USER = null;
     sessionStorage.removeItem('ctt_token');
     sessionStorage.removeItem('ctt_user');
     document.getElementById('loginModal').style.display = 'flex';
@@ -655,7 +724,8 @@ async function doLogin(username, password) {
   sessionStorage.setItem('ctt_user', JSON.stringify(CURRENT_USER));
   document.getElementById('loginModal').style.display = 'none';
   applyRoleUI(CURRENT_USER);
-  if (typeof loadShipments === 'function') loadShipments();
+  if (typeof fetchShipments === 'function') fetchShipments();
+  if (typeof loadVehiclesDropdown === 'function') loadVehiclesDropdown();
 }
 
 function quickLogin(u, p) {
