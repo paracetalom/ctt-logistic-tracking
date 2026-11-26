@@ -165,11 +165,21 @@
             }
         }
 
-    </style>
+    
+img[src="/logo.png"] {
+  max-height: 44px;
+  width: auto !important;
+  height: auto;
+  max-width: 190px;
+  object-fit: contain;
+  display: block;
+}
+
+</style>
 </head>
 <body>
     <header class="topbar">
-        <a href="/"><img src="/logo.png" title="กลับหน้าหลัก" style="display:inline-flex;align-items:center;position:relative;z-index:20;cursor:pointer;text-decoration:none;"> alt="CTT Logistics" style="height:34px;width:auto;display:block;object-fit:contain;"></a>
+        <a href="/"><img src="/logo.png" alt="CTT Logistics" style="height:34px;width:auto;max-height:44px;object-fit:contain;display:block;"></a>
         <a href="/dashboard" class="btn-staff">เข้าสู่ระบบเจ้าหน้าที่</a>
     </header>
 
@@ -205,14 +215,22 @@
 
             <div style="font-size:14px;font-weight:700;color:#002B88;margin-bottom:12px;">ประวัติการเคลื่อนไหว (Shipment & Customs Log)</div>
             <div id="r-logs"></div>
+
+            <div style="margin-top:16px;padding-top:14px;border-top:1px solid #E2E8F0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <button type="button" onclick="copyTrackLink()" style="background:#FFFFFF;color:#002B88;border:1px solid #CBD5E1;padding:7px 14px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;">คัดลอกลิงก์ติดตามพัสดุ</button>
+                <span id="copy-msg" style="font-size:12px;color:#15803D;display:none;">คัดลอกลิงก์เรียบร้อยแล้ว</span>
+            </div>
         </div>
-    </main>
+    
+
+
+</main>
 
     <script>
         document.getElementById('track-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const code = document.getElementById('track-input').value.trim().toUpperCase();
-            const res = await fetch(`/api/shipments/${code}/logs`);
+            const res = await fetch(`/api/public/track/${encodeURIComponent(code)}`);
             const card = document.getElementById('result-card');
             const nf = document.getElementById('not-found');
             if (!res.ok) {
@@ -238,11 +256,30 @@
                 </div>
             `).join('');
         });
+
+        function copyTrackLink() {
+            const code = document.getElementById('r-tracking').textContent.trim();
+            const url = `${window.location.origin}/track?no=${encodeURIComponent(code)}`;
+            navigator.clipboard.writeText(url).then(() => {
+                const msg = document.getElementById('copy-msg');
+                msg.style.display = 'inline';
+                setTimeout(() => { msg.style.display = 'none'; }, 2500);
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const no = new URLSearchParams(window.location.search).get('no');
+            if (no) {
+                document.getElementById('track-input').value = no.trim();
+                document.getElementById('track-form').dispatchEvent(new Event('submit'));
+            }
+        });
+
     </script>
 
 <footer style="border-top:1px solid #E2E8F0;padding:16px 28px;margin-top:40px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#64748B;background:#FFFFFF;">
   <div style="display:flex;align-items:center;gap:10px;">
-    <a href="/"><img src="/logo.png" title="กลับหน้าหลัก" style="display:inline-flex;align-items:center;position:relative;z-index:20;cursor:pointer;text-decoration:none;"> alt="CTT Logistics" style="height:24px;width:auto;display:block;object-fit:contain;"></a>
+    <a href="/"><img src="/logo.png" alt="CTT Logistics" style="height:34px;width:auto;max-height:44px;object-fit:contain;display:block;"></a>
     <span style="font-weight:600;color:#002B88;">CTT FREEZONE &amp; LOGISTICS CO., LTD.</span>
   </div>
   <span>ระบบบริหารจัดการคลังสินค้าเขตปลอดอากรและควบคุมการขนส่ง</span>

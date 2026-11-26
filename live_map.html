@@ -302,12 +302,22 @@
             }
         }
 
-    </style>
+    
+img[src="/logo.png"] {
+  max-height: 44px;
+  width: auto !important;
+  height: auto;
+  max-width: 190px;
+  object-fit: contain;
+  display: block;
+}
+
+</style>
 </head>
 <body>
 
     <header class="topbar">
-        <a href="/" class="brand"><img src="/logo.png" title="กลับหน้าหลัก" style="display:inline-flex;align-items:center;position:relative;z-index:20;cursor:pointer;text-decoration:none;"> alt="CTT Logistics" style="height:34px;width:auto;display:block;object-fit:contain;"></a>
+        <a href="/" class="brand"><img src="/logo.png" alt="CTT Logistics" style="height:34px;width:auto;max-height:44px;object-fit:contain;display:block;"></a>
             <div class="divider-v"></div>
             <span class="page-title">ศูนย์ควบคุมโครงข่ายคลังสินค้าปลอดอากรและการเดินรถ</span>
         </a>
@@ -337,7 +347,7 @@
         </div>
 
         <div class="corner-brand">
-            <a href="/"><img src="/logo.png" title="กลับหน้าหลัก" style="display:inline-flex;align-items:center;position:relative;z-index:20;cursor:pointer;text-decoration:none;"> alt="CTT Logistics" style="height:20px;width:auto;display:block;"></a>
+            <a href="/"><img src="/logo.png" alt="CTT Logistics" style="height:34px;width:auto;max-height:44px;object-fit:contain;display:block;"></a>
             <span>FREEZONE CONTROL TOWER</span>
         </div>
 
@@ -488,7 +498,7 @@
                     <div class="detail-grid">
                         <div class="detail-row">
                             <span class="detail-key">ทะเบียนรถขนส่ง</span>
-                            <span class="detail-val">${s.plate_number || 'ยังไม่ระบุรถ'}</span>
+                            <span class="detail-val">${s.vehicle_plate || s.plate_number || 'ยังไม่ระบุรถ'}</span>
                         </div>
                         <div class="detail-row">
                             <span class="detail-key">พนักงานขับรถ</span>
@@ -524,7 +534,8 @@
                         </div>
                     </div>
 
-                    <button class="btn-all-list" onclick="openAllList()">ดูรายการรถและสินค้าทั้งหมด</button>
+                    <a href="/track?no=${encodeURIComponent(s.tracking_no)}" target="_blank" class="btn-all-list" style="display:block;text-align:center;text-decoration:none;background:#002B88;color:#FFFFFF;border-color:#002B88;">เปิดหน้าไทม์ไลน์ติดตามพัสดุ (Track)</a>
+                    <button class="btn-all-list" style="margin-top:8px;" onclick="openAllList()">ดูรายการรถและสินค้าทั้งหมด</button>
                 </div>
             `;
             panel.classList.add('open');
@@ -557,7 +568,7 @@
                                 <span class="status-tag ${tagClass}">${s.status}</span>
                             </div>
                             <div class="row-sub">
-                                รถ: ${s.plate_number || '-'} · ผู้รับ: ${s.receiver}
+                                รถ: ${s.vehicle_plate || s.plate_number || '-'} · ผู้รับ: ${s.receiver}
                                 <div class="row-tracking">${s.tracking_no}</div>
                             </div>
                         </div>

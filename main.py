@@ -101,6 +101,16 @@ def init_db():
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """)
 
+                for col_sql in [
+                    "ALTER TABLE shipments ADD COLUMN customs_doc_no VARCHAR(80) DEFAULT NULL",
+                    "ALTER TABLE shipments ADD COLUMN service_type VARCHAR(80) DEFAULT 'Free Zone Warehouse'",
+                    "ALTER TABLE shipments ADD COLUMN container_no VARCHAR(50) DEFAULT NULL",
+                ]:
+                    try:
+                        cursor.execute(col_sql)
+                    except Exception:
+                        pass
+
                 cursor.execute("SELECT COUNT(*) AS cnt FROM users")
                 if cursor.fetchone()["cnt"] == 0:
                     cursor.executemany(
@@ -134,6 +144,9 @@ class LoginRequest(BaseModel):
 
 class ShipmentCreate(BaseModel):
     tracking_no: Optional[str] = None
+    customs_doc_no: Optional[str] = None
+    service_type: Optional[str] = "Free Zone Warehouse"
+    container_no: Optional[str] = None
     sender: str
     receiver: str
     destination: str
@@ -260,7 +273,7 @@ def public_track_shipment(tracking_no: str):
     try:
         with conn.cursor() as cursor:
             cursor.execute(
-                """SELECT s.id, s.tracking_no, s.sender, s.receiver, s.destination, s.status,
+                """SELECT s.id, s.tracking_no, s.customs_doc_no, s.service_type, s.container_no, s.sender, s.receiver, s.destination, s.status,
                           s.weight_kg, s.updated_at,
                           v.plate_number AS plate_no, v.driver_name, v.vehicle_type
                    FROM shipments s
@@ -423,3 +436,45 @@ def serve_showcase():
 @app.get("/live-map")
 async def live_command_center():
     return FileResponse("live_map.html")
+
+
+from fastapi.responses import HTMLResponse, JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request, exc):
+    if exc.status_code == 404 and not request.url.path.startswith("/api/"):
+        html_404 = """<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 — ไม่พบหน้าที่ต้องการ | CTT Freezone &amp; Logistics</title>
+  <style>
+    body { font-family: sans-serif; background: #FFFFFF; color: #0F172A; margin: 0; display: flex; min-height: 100vh; align-items: center; justify-content: center; padding: 20px; }
+    .box { max-width: 440px; width: 100%; border: 1px solid #E2E8F0; border-top: 4px solid #002B88; border-radius: 4px; padding: 28px; }
+    .code { font-weight: 700; color: #E10600; font-size: 13px; letter-spacing: 0.08em; }
+    h1 { margin: 8px 0 10px; font-size: 24px; color: #002B88; }
+    p { margin: 0 0 22px; color: #475569; font-size: 14px; line-height: 1.6; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    a { text-decoration: none; font-size: 13px; font-weight: 600; padding: 10px 14px; border-radius: 4px; }
+    .primary { background: #002B88; color: #FFFFFF; }
+    .secondary { border: 1px solid #CBD5E1; color: #002B88; background: #FFFFFF; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="code">ERROR 404</div>
+    <h1>ไม่พบหน้าที่ต้องการ</h1>
+    <p>ไม่พบเส้นทางหน้าเว็บที่คุณเรียกใช้งาน กรุณากลับไปที่หน้าหลักหรือหน้าแดชบอร์ดเพื่อดำเนินการต่อ</p>
+    <div class="actions">
+      <a class="primary" href="/">กลับหน้าหลัก</a>
+      <a class="secondary" href="/dashboard">ไปหน้าแดชบอร์ด</a>
+    </div>
+  </div>
+</body>
+</html>"""
+        return HTMLResponse(content=html_404, status_code=404)
+    if request.url.path.startswith("/api/"):
+        return JSONResponse(content={"detail": exc.detail}, status_code=exc.status_code)
+    return HTMLResponse(content=str(exc.detail), status_code=exc.status_code)

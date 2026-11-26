@@ -265,14 +265,24 @@
             }
         }
 
-    </style>
+    
+img[src="/logo.png"] {
+  max-height: 44px;
+  width: auto !important;
+  height: auto;
+  max-width: 190px;
+  object-fit: contain;
+  display: block;
+}
+
+</style>
 </head>
 <body>
 
     <!-- Login View -->
     <div id="login-view" class="login-wrap">
         <div class="login-card">
-            <a href="/"><img src="/logo.png" title="กลับหน้าหลัก" style="display:inline-flex;align-items:center;position:relative;z-index:20;cursor:pointer;text-decoration:none;"> alt="CTT Logistics" style="height:44px;width:auto;display:block;margin-bottom:10px;object-fit:contain;"></a>
+            <a href="/"><img src="/logo.png" alt="CTT Logistics" style="height:34px;width:auto;max-height:44px;object-fit:contain;display:block;"></a>
             <p style="font-size:13px;color:#475569;">ระบบบริหารคลังสินค้าเขตปลอดอากรและควบคุมการขนส่ง</p>
             <form id="login-form">
                 <div class="form-group">
@@ -296,7 +306,7 @@
     <div id="app-view" style="display:none;">
         <header class="topbar">
             <div class="nav-left">
-                <a href="/"><img src="/logo.png" title="กลับหน้าหลัก" style="display:inline-flex;align-items:center;position:relative;z-index:20;cursor:pointer;text-decoration:none;"> alt="CTT Logistics" style="height:34px;width:auto;display:block;object-fit:contain;"></a>
+                <a href="/"><img src="/logo.png" alt="CTT Logistics" style="height:34px;width:auto;max-height:44px;object-fit:contain;display:block;"></a>
                 <span class="role-badge" id="user-role-badge">ROLE</span>
                 <span id="user-name-label" style="font-size:13px;color:#475569;"></span>
             </div>
@@ -357,7 +367,17 @@
             <section class="section-box">
                 <div class="section-head">
                     <span class="section-title">ทะเบียนควบคุมสินค้าเข้า-ออกคลังและการจัดส่ง</span>
-                    <input type="text" id="search-input" class="input-std" style="width:280px;padding:6px 12px;font-size:13px;" placeholder="ค้นหาเลขพัสดุ, เลขใบขนฯ, ตู้คอนเทนเนอร์...">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    <input type="text" id="search-input" oninput="applyTableFilters()" class="input-std" style="width:240px;padding:6px 12px;font-size:13px;" placeholder="ค้นหาเลขพัสดุ, เลขใบขนฯ, ตู้...">
+    <select id="status-filter" onchange="applyTableFilters()" class="input-std" style="width:auto;padding:6px 10px;font-size:13px;">
+        <option value="">ทุกสถานะ</option>
+        <option value="รับเข้าคลัง Free Zone">รับเข้าคลัง Free Zone</option>
+        <option value="รอตรวจปล่อยศุลกากร">รอตรวจปล่อยศุลกากร</option>
+        <option value="ผ่านพิธีการศุลกากร">ผ่านพิธีการศุลกากร</option>
+        <option value="กำลังจัดส่ง">กำลังจัดส่ง</option>
+        <option value="จัดส่งสำเร็จ">จัดส่งสำเร็จ</option>
+    </select>
+</div>
                 </div>
                 <div style="overflow-x:auto;">
                     <table>
@@ -483,15 +503,16 @@
                             <div style="font-size:12px;color:#64748B;">จาก: ${s.sender}</div>
                         </td>
                         <td>
-                            <div style="font-weight:600;">${s.plate_number || '-'}</div>
+                            <div style="font-weight:600;">${s.vehicle_plate || s.plate_number || '-'}</div>
                             <div class="mono" style="font-size:11px;color:#64748B;">ตู้: ${s.container_no || '-'}</div>
                         </td>
                         <td>
                             <select class="status-select" onchange="updateStatus('${s.tracking_no}', this.value)">${opts}</select>
                         </td>
                         <td style="font-size:12px;color:#64748B;">${new Date(s.updated_at).toLocaleString('th-TH')}</td>
-                        <td style="text-align:right;">
-                            ${isAdmin ? `<button onclick="deleteRow('${s.tracking_no}')" style="color:#E10600;background:none;border:none;font-size:12px;font-weight:600;cursor:pointer;">ลบ</button>` : '<span style="font-size:11px;color:#94A3B8;">-</span>'}
+                        <td style="text-align:right;white-space:nowrap;">
+                            <a href="/track?no=${encodeURIComponent(s.tracking_no)}" target="_blank" style="color:#002B88;text-decoration:none;font-size:12px;font-weight:600;margin-right:10px;">ไทม์ไลน์</a>
+                            ${isAdmin ? `<button onclick="deleteRow('${s.tracking_no}')" style="color:#E10600;background:none;border:none;font-size:12px;font-weight:600;cursor:pointer;">ลบ</button>` : ''}
                         </td>
                     </tr>
                 `;
@@ -500,6 +521,9 @@
 
         document.getElementById('create-form').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'กำลังบันทึก...'; }
+            try {
             const payload = {
                 tracking_no: document.getElementById('tracking_no').value,
                 customs_doc_no: document.getElementById('customs_doc_no').value,
@@ -521,15 +545,27 @@
                 return;
             }
             e.target.reset();
-            loadShipments();
+            await loadShipments();
+            } finally {
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'บันทึก'; }
+            }
         });
 
         async function updateStatus(trackingNo, status) {
-            await fetch(`/api/shipments/${trackingNo}`, {
+            const res = await fetch(`/api/shipments/${trackingNo}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
                 body: JSON.stringify({ status })
             });
+            if (res.status === 401) {
+                alert('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+                logout();
+                return;
+            }
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                alert(err.detail || 'ไม่สามารถอัปเดตสถานะได้');
+            }
             loadShipments();
         }
 
@@ -542,16 +578,7 @@
             loadShipments();
         }
 
-        document.getElementById('search-input').addEventListener('input', (e) => {
-            const q = e.target.value.toLowerCase();
-            renderTable(allShipments.filter(s =>
-                (s.tracking_no || '').toLowerCase().includes(q) ||
-                (s.customs_doc_no || '').toLowerCase().includes(q) ||
-                (s.container_no || '').toLowerCase().includes(q) ||
-                (s.receiver || '').toLowerCase().includes(q) ||
-                (s.destination || '').toLowerCase().includes(q)
-            ));
-        });
+
 
         function exportCSV() {
             const headers = ['Tracking No,Customs Doc,Service Type,Container No,Sender,Receiver,Destination,Status,Updated At'];
@@ -566,11 +593,33 @@
         }
 
         initApp();
-    </script>
+    
+
+function applyTableFilters() {
+    const q = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
+    const st = document.getElementById('status-filter')?.value || '';
+    const filtered = allShipments.filter(s => {
+        const matchStatus = !st || s.status === st;
+        const text = `${s.tracking_no || ''} ${s.customs_doc_no || ''} ${s.container_no || ''} ${s.sender || ''} ${s.receiver || ''} ${s.destination || ''}`.toLowerCase();
+        const matchQuery = !q || text.includes(q);
+        return matchStatus && matchQuery;
+    });
+    renderTable(filtered);
+}
+
+function resetTableFilters() {
+    const sInput = document.getElementById('search-input');
+    const stSelect = document.getElementById('status-filter');
+    if (sInput) sInput.value = '';
+    if (stSelect) stSelect.value = '';
+    renderTable(allShipments);
+}
+
+</script>
 
 <footer style="border-top:1px solid #E2E8F0;padding:16px 28px;margin-top:40px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#64748B;background:#FFFFFF;">
   <div style="display:flex;align-items:center;gap:10px;">
-    <a href="/"><img src="/logo.png" title="กลับหน้าหลัก" style="display:inline-flex;align-items:center;position:relative;z-index:20;cursor:pointer;text-decoration:none;"> alt="CTT Logistics" style="height:24px;width:auto;display:block;object-fit:contain;"></a>
+    <a href="/"><img src="/logo.png" alt="CTT Logistics" style="height:34px;width:auto;max-height:44px;object-fit:contain;display:block;"></a>
     <span style="font-weight:600;color:#002B88;">CTT FREEZONE &amp; LOGISTICS CO., LTD.</span>
   </div>
   <span>ระบบบริหารจัดการคลังสินค้าเขตปลอดอากรและควบคุมการขนส่ง</span>
