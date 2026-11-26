@@ -411,6 +411,11 @@ async def public_tracking_page():
 def serve_logo():
     return FileResponse("CTT-Log-scaled.png", media_type="image/png")
 
+
+@app.get("/showcase")
+def serve_showcase():
+    return FileResponse("showcase.html", media_type="text/html")
+
 @app.get("/live-map")
 async def live_command_center():
     return FileResponse("live_map.html")

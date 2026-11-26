@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTT Freezone & Logistics — Enterprise Overview</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-pure: #FFFFFF;
+            --bg-soft: #F8FAFC;
+            --border-hairline: #E2E8F0;
+            --border-navy: #002B88;
+            --ctt-navy: #002B88;
+            --ctt-red: #E10600;
+            --ink-primary: #0F172A;
+            --ink-secondary: #475569;
+            --ink-muted: #64748B;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: var(--bg-pure);
+            color: var(--ink-primary);
+            font-family: 'IBM Plex Sans Thai', sans-serif;
+            line-height: 1.65;
+            overflow-x: hidden;
+        }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* Top Navigation */
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border-hairline);
+        }
+        .topbar-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            height: 68px;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+        .brand-link {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            text-decoration: none;
+        }
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .nav-link {
+            color: var(--ink-secondary);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 8px 12px;
+            border-radius: 4px;
+            transition: color 0.2s ease, background 0.2s ease;
+        }
+        .nav-link:hover {
+            color: var(--ctt-navy);
+            background: var(--bg-soft);
+        }
+        .btn-primary {
+            background: var(--ctt-navy);
+            color: #FFFFFF;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 9px 16px;
+            border-radius: 4px;
+            border: 1px solid var(--ctt-navy);
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+        .btn-primary:hover {
+            background: var(--ctt-red);
+            border-color: var(--ctt-red);
+        }
+
+        /* Hero Section */
+        .hero {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 64px 24px 56px;
+            display: grid;
+            grid-template-columns: 1.08fr 0.92fr;
+            gap: 48px;
+            align-items: center;
+        }
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--ctt-red);
+            margin-bottom: 16px;
+        }
+        .eyebrow::before {
+            content: "";
+            width: 18px;
+            height: 2px;
+            background: var(--ctt-red);
+        }
+        .hero h1 {
+            font-size: clamp(30px, 4.2vw, 48px);
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+            color: var(--ctt-navy);
+            margin-bottom: 18px;
+        }
+        .hero h1 span {
+            color: var(--ctt-red);
+        }
+        .hero-desc {
+            font-size: 16px;
+            color: var(--ink-secondary);
+            max-width: 560px;
+            margin-bottom: 28px;
+        }
+        .hero-cta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 36px;
+        }
+        .btn-outline {
+            background: var(--bg-pure);
+            color: var(--ctt-navy);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 9px 16px;
+            border-radius: 4px;
+            border: 1px solid #CBD5E1;
+            transition: border-color 0.2s ease, background 0.2s ease;
+        }
+        .btn-outline:hover {
+            border-color: var(--ctt-navy);
+            background: var(--bg-soft);
+        }
+        .hero-metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-hairline);
+        }
+        .metric-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--ctt-navy);
+        }
+        .metric-label {
+            font-size: 12px;
+            color: var(--ink-muted);
+        }
+
+        /* Fading Visual Showcase Frame */
+        .visual-stage {
+            position: relative;
+            height: 430px;
+            border: 1px solid var(--border-hairline);
+            border-top: 3px solid var(--ctt-navy);
+            border-radius: 4px;
+            background: var(--bg-pure);
+            overflow: hidden;
+        }
+        .fade-slide {
+            position: absolute;
+            inset: 0;
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            opacity: 0;
+            transform: scale(1.015);
+            transition: opacity 1.1s cubic-bezier(0.22, 1, 0.36, 1), transform 1.4s cubic-bezier(0.22, 1, 0.36, 1);
+            pointer-events: none;
+            background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+        }
+        .fade-slide.is-active {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+        }
+        .slide-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .slide-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ctt-navy);
+            background: #EFF6FF;
+            border: 1px solid #DBEAFE;
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+        .slide-index {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--ink-muted);
+        }
+        .slide-art {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 12px 0;
+        }
+        .slide-art svg {
+            width: 100%;
+            max-height: 215px;
+        }
+        .slide-caption {
+            border-top: 1px solid var(--border-hairline);
+            padding-top: 16px;
+        }
+        .slide-caption h3 {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--ctt-navy);
+            margin-bottom: 4px;
+        }
+        .slide-caption p {
+            font-size: 13px;
+            color: var(--ink-secondary);
+        }
+        .slide-dots {
+            position: absolute;
+            bottom: 24px;
+            right: 28px;
+            z-index: 10;
+            display: flex;
+            gap: 8px;
+        }
+        .dot-btn {
+            width: 24px;
+            height: 4px;
+            border: none;
+            border-radius: 2px;
+            background: #CBD5E1;
+            cursor: pointer;
+            transition: background 0.3s ease, width 0.3s ease;
+        }
+        .dot-btn.active {
+            width: 36px;
+            background: var(--ctt-red);
+        }
+
+        /* Sections */
+        .section {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 64px 24px;
+            border-top: 1px solid var(--border-hairline);
+        }
+        .section-head {
+            max-width: 680px;
+            margin-bottom: 40px;
+        }
+        .section-kicker {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ctt-navy);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        .section-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--ink-primary);
+            margin-bottom: 10px;
+        }
+        .section-sub {
+            font-size: 15px;
+            color: var(--ink-secondary);
+        }
+
+        .pillars-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+        .pillar-card {
+            background: var(--bg-pure);
+            border: 1px solid var(--border-hairline);
+            border-radius: 4px;
+            padding: 28px 24px;
+            transition: border-color 0.25s ease;
+        }
+        .pillar-card:hover {
+            border-color: var(--ctt-navy);
+        }
+        .pillar-no {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--ctt-red);
+            margin-bottom: 12px;
+        }
+        .pillar-card h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--ctt-navy);
+            margin-bottom: 10px;
+        }
+        .pillar-card p {
+            font-size: 14px;
+            color: var(--ink-secondary);
+        }
+
+        /* Workflow Strip */
+        .flow-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+        .flow-step {
+            border: 1px solid var(--border-hairline);
+            border-left: 3px solid var(--ctt-navy);
+            border-radius: 4px;
+            padding: 20px;
+            background: var(--bg-soft);
+        }
+        .flow-step:last-child {
+            border-left-color: var(--ctt-red);
+        }
+        .flow-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink-muted);
+            margin-bottom: 6px;
+        }
+        .flow-step h4 {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--ink-primary);
+            margin-bottom: 6px;
+        }
+        .flow-step p {
+            font-size: 13px;
+            color: var(--ink-secondary);
+        }
+
+        /* Footer */
+        .footer {
+            border-top: 1px solid var(--border-hairline);
+            background: var(--bg-soft);
+            padding: 28px 24px;
+            margin-top: 24px;
+        }
+        .footer-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .footer-meta {
+            font-size: 12px;
+            color: var(--ink-muted);
+        }
+
+        @media (max-width: 960px) {
+            .hero {
+                grid-template-columns: 1fr;
+                padding-top: 40px;
+                gap: 32px;
+            }
+            .visual-stage {
+                height: 360px;
+            }
+            .pillars-grid {
+                grid-template-columns: 1fr;
+            }
+            .flow-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                overflow-x: hidden;
+            }
+            .topbar-inner {
+                height: auto;
+                min-height: 58px;
+                padding: 10px 14px;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .nav-actions {
+                width: 100%;
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                padding-bottom: 4px;
+                -webkit-overflow-scrolling: touch;
+            }
+            .nav-link, .btn-primary, .btn-outline {
+                white-space: nowrap;
+                flex-shrink: 0;
+                font-size: 12px;
+                padding: 7px 11px;
+            }
+            .hero {
+                padding: 28px 14px 36px;
+            }
+            .hero-metrics {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            .section {
+                padding: 40px 14px;
+            }
+            .flow-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="topbar">
+        <div class="topbar-inner">
+            <a href="/showcase" class="brand-link">
+                <img src="/logo.png" alt="CTT Logistics" style="height:34px;width:auto;display:block;object-fit:contain;">
+            </a>
+            <nav class="nav-actions">
+                <a href="#about" class="nav-link">บริษัททำอะไร</a>
+                <a href="#capabilities" class="nav-link">บริการหลัก</a>
+                <a href="/live-map" class="nav-link">Live Map</a>
+                <a href="/track" class="nav-link">ติดตามพัสดุ</a>
+                <a href="/" class="btn-primary">เข้าสู่ระบบจัดการ</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div>
+            <div class="eyebrow">CTT Freezone &amp; Logistics</div>
+            <h1>โครงสร้างพื้นฐานด้านคลังสินค้าเขตปลอดอากรและ<span>โลจิสติกส์ครบวงจร</span></h1>
+            <p class="hero-desc">
+                ผสานงานจัดเก็บสินค้าในเขตปลอดอากร (Free Zone) การอ้างอิงเอกสารพิธีการศุลกากร
+                และการควบคุมการเดินรถตู้คอนเทนเนอร์และรถบรรทุกไว้ในระบบเดียวที่ตรวจสอบย้อนกลับได้ทุกขั้นตอน
+            </p>
+            <div class="hero-cta">
+                <a href="/" class="btn-primary">เปิดแดชบอร์ดปฏิบัติการ</a>
+                <a href="/live-map" class="btn-outline">ดูแผนที่เดินรถแบบสด</a>
+                <a href="/track" class="btn-outline">ตรวจสอบสถานะสินค้า</a>
+            </div>
+            <div class="hero-metrics">
+                <div>
+                    <div class="metric-num">FREE ZONE</div>
+                    <div class="metric-label">คลังสินค้าเขตปลอดอากร &amp; ใบขนฯ</div>
+                </div>
+                <div>
+                    <div class="metric-num">REAL-TIME</div>
+                    <div class="metric-label">ติดตามสถานะและพิกัดการเดินรถ</div>
+                </div>
+                <div>
+                    <div class="metric-num">AUDIT LOG</div>
+                    <div class="metric-label">บันทึกประวัติทุกขั้นตอนตามเวลาจริง</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fading Visual Slideshow -->
+        <div class="visual-stage" id="fade-stage">
+            <div class="fade-slide is-active" data-slide="0">
+                <div class="slide-top">
+                    <span class="slide-tag">01 / FREE ZONE WAREHOUSE</span>
+                    <span class="slide-index mono">01 / 03</span>
+                </div>
+                <div class="slide-art">
+                    <svg viewBox="0 0 420 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="30" y="55" width="360" height="115" rx="4" fill="#FFFFFF" stroke="#002B88" stroke-width="2"/>
+                        <path d="M24 58L210 16L396 58" stroke="#002B88" stroke-width="3" stroke-linecap="round"/>
+                        <rect x="56" y="84" width="76" height="62" rx="2" fill="#EFF6FF" stroke="#002B88" stroke-width="1.5"/>
+                        <rect x="148" y="84" width="76" height="62" rx="2" fill="#EFF6FF" stroke="#002B88" stroke-width="1.5"/>
+                        <rect x="240" y="84" width="114" height="62" rx="2" fill="#FEF2F2" stroke="#E10600" stroke-width="1.5"/>
+                        <line x1="56" y1="105" x2="132" y2="105" stroke="#93C5FD" stroke-width="1.5"/>
+                        <line x1="148" y1="105" x2="224" y2="105" stroke="#93C5FD" stroke-width="1.5"/>
+                        <line x1="240" y1="105" x2="354" y2="105" stroke="#FCA5A5" stroke-width="1.5"/>
+                    </svg>
+                </div>
+                <div class="slide-caption">
+                    <h3>คลังสินค้าเขตปลอดอากรและจุดพักสินค้า</h3>
+                    <p>รองรับการจัดเก็บสินค้านำเข้า-ส่งออก เชื่อมโยงเลขที่ใบขนศุลกากรและเลขตู้คอนเทนเนอร์อย่างเป็นระบบ</p>
+                </div>
+            </div>
+
+            <div class="fade-slide" data-slide="1">
+                <div class="slide-top">
+                    <span class="slide-tag">02 / CUSTOMS &amp; COMPLIANCE</span>
+                    <span class="slide-index mono">02 / 03</span>
+                </div>
+                <div class="slide-art">
+                    <svg viewBox="0 0 420 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="75" y="24" width="270" height="152" rx="4" fill="#FFFFFF" stroke="#002B88" stroke-width="2"/>
+                        <line x1="105" y1="56" x2="255" y2="56" stroke="#002B88" stroke-width="2.5"/>
+                        <line x1="105" y1="84" x2="315" y2="84" stroke="#CBD5E1" stroke-width="2"/>
+                        <line x1="105" y1="108" x2="290" y2="108" stroke="#CBD5E1" stroke-width="2"/>
+                        <rect x="105" y="130" width="120" height="24" rx="2" fill="#FEF2F2" stroke="#E10600" stroke-width="1.5"/>
+                        <circle cx="298" cy="142" r="14" fill="#002B88"/>
+                        <path d="M292 142L296 146L305 137" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div class="slide-caption">
+                    <h3>พิธีการศุลกากรและการตรวจสอบย้อนกลับ</h3>
+                    <p>ติดตามลำดับขั้นตอนตั้งแต่รับเข้าคลัง ตรวจปล่อยเอกสารศุลกากร จนถึงการส่งมอบพร้อมบันทึกเวลาจริง</p>
+                </div>
+            </div>
+
+            <div class="fade-slide" data-slide="2">
+                <div class="slide-top">
+                    <span class="slide-tag">03 / CONTAINER &amp; FLEET</span>
+                    <span class="slide-index mono">03 / 03</span>
+                </div>
+                <div class="slide-art">
+                    <svg viewBox="0 0 420 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M45 148L145 92L255 128L375 56" stroke="#E10600" stroke-width="2.5" stroke-dasharray="6 5"/>
+                        <circle cx="45" cy="148" r="7" fill="#002B88"/>
+                        <circle cx="145" cy="92" r="6" fill="#002B88"/>
+                        <circle cx="255" cy="128" r="6" fill="#002B88"/>
+                        <polygon points="375,44 385,64 365,64" fill="#E10600"/>
+                        <rect x="180" y="34" width="136" height="44" rx="4" fill="#FFFFFF" stroke="#002B88" stroke-width="1.5"/>
+                        <line x1="194" y1="50" x2="296" y2="50" stroke="#002B88" stroke-width="2"/>
+                        <line x1="194" y1="64" x2="262" y2="64" stroke="#E10600" stroke-width="2"/>
+                    </svg>
+                </div>
+                <div class="slide-caption">
+                    <h3>ควบคุมเส้นทางเดินรถและตู้คอนเทนเนอร์</h3>
+                    <p>เชื่อมต่อข้อมูลทะเบียนรถ พนักงานขับรถ เลขตู้คอนเทนเนอร์ และจุดหมายปลายทางบนแผนที่ควบคุม</p>
+                </div>
+            </div>
+
+            <div class="slide-dots" aria-label="ตัวเลือกภาพประกอบ">
+                <button class="dot-btn active" onclick="goSlide(0)" aria-label="ภาพที่ 1"></button>
+                <button class="dot-btn" onclick="goSlide(1)" aria-label="ภาพที่ 2"></button>
+                <button class="dot-btn" onclick="goSlide(2)" aria-label="ภาพที่ 3"></button>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="about">
+        <div class="section-head">
+            <div class="section-kicker">About CTT Freezone &amp; Logistics</div>
+            <h2 class="section-title">บริษัททำเกี่ยวกับอะไร</h2>
+            <p class="section-sub">
+                CTT Freezone / CTT Logistics ดำเนินธุรกิจด้านคลังสินค้าเขตปลอดอากร พิธีการศุลกากร
+                และการบริหารจัดการการขนส่งและกระจายสินค้า เพื่อให้การเคลื่อนย้ายสินค้าทั้งระหว่างประเทศและภายในประเทศเป็นไปอย่างต่อเนื่องและตรวจสอบได้
+            </p>
+        </div>
+
+        <div class="flow-grid">
+            <div class="flow-step">
+                <div class="flow-tag">STEP 01</div>
+                <h4>รับเข้าคลัง Free Zone</h4>
+                <p>บันทึกข้อมูลสินค้าเข้าคลังเขตปลอดอากร พร้อมอ้างอิงเลขที่ใบขนฯ และเลขตู้คอนเทนเนอร์</p>
+            </div>
+            <div class="flow-step">
+                <div class="flow-tag">STEP 02</div>
+                <h4>พิธีการศุลกากร</h4>
+                <p>ติดตามสถานะเอกสารและการตรวจปล่อยทางศุลกากรก่อนปล่อยสินค้าออกจากเขตปลอดอากร</p>
+            </div>
+            <div class="flow-step">
+                <div class="flow-tag">STEP 03</div>
+                <h4>มอบหมายรถและเดินรถ</h4>
+                <p>เชื่อมโยงรถหัวลากตู้คอนเทนเนอร์หรือรถบรรทุก พนักงานขับรถ และเส้นทางขนส่งบนแผนที่</p>
+            </div>
+            <div class="flow-step">
+                <div class="flow-tag">STEP 04</div>
+                <h4>ส่งมอบและตรวจสอบย้อนหลัง</h4>
+                <p>บันทึกประวัติการเคลื่อนไหวเรียงลำดับเวลาจริง และให้ผู้เกี่ยวข้องตรวจสอบสถานะได้ทันที</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="capabilities">
+        <div class="section-head">
+            <div class="section-kicker">Core Capabilities</div>
+            <h2 class="section-title">ระบบและบริการทำอะไรได้บ้าง</h2>
+            <p class="section-sub">
+                ออกแบบให้สอดคล้องกับบทบาทการทำงานจริงของทีมปฏิบัติการและการตรวจสอบข้อมูลของลูกค้า
+            </p>
+        </div>
+
+        <div class="pillars-grid">
+            <div class="pillar-card">
+                <div class="pillar-no">01 / WAREHOUSE &amp; CUSTOMS</div>
+                <h3>บริหารคลังเขตปลอดอากรและเอกสาร</h3>
+                <p>
+                    จัดเก็บและค้นหารายการสินค้าตามเลขพัสดุ เลขที่ใบขนศุลกากร เลขตู้คอนเทนเนอร์
+                    และประเภทบริการ พร้อมพิมพ์ใบปะหน้า QR Code และส่งออกรายงาน CSV
+                </p>
+            </div>
+            <div class="pillar-card">
+                <div class="pillar-no">02 / FLEET &amp; LIVE MAP</div>
+                <h3>ติดตามการเดินรถและศูนย์ควบคุม</h3>
+                <p>
+                    แสดงจุดคลังหลักและสถานะการเดินรถบนแผนที่แบบเต็มจอ กดเลือกดูรายละเอียดทีละคันได้
+                    พร้อมกรองสถานะเพื่อติดตามงานหน้างานอย่างรวดเร็ว
+                </p>
+            </div>
+            <div class="pillar-card">
+                <div class="pillar-no">03 / RBAC &amp; TIMELINE</div>
+                <h3>ควบคุมสิทธิ์และไทม์ไลน์ย้อนหลัง</h3>
+                <p>
+                    จำกัดสิทธิ์ตามบทบาทผู้ใช้งาน (Admin, Shipping, Tracking) และบันทึกประวัติสถานะทุกขั้นตอน
+                    เพื่อให้ตรวจสอบเส้นทางและเวลาจริงได้โปร่งใส
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="footer-inner">
+            <img src="/logo.png" alt="CTT Logistics" style="height:26px;width:auto;display:block;object-fit:contain;">
+            <div class="footer-meta mono">CTT FREEZONE &amp; LOGISTICS · ENTERPRISE OPERATIONS OVERVIEW</div>
+        </div>
+    </footer>
+
+    <script>
+        const slides = document.querySelectorAll('.fade-slide');
+        const dots = document.querySelectorAll('.dot-btn');
+        let currentIdx = 0;
+        let timer = null;
+
+        function goSlide(idx) {
+            currentIdx = idx % slides.length;
+            slides.forEach((el, i) => el.classList.toggle('is-active', i === currentIdx));
+            dots.forEach((el, i) => el.classList.toggle('active', i === currentIdx));
+            restartTimer();
+        }
+
+        function nextSlide() {
+            goSlide((currentIdx + 1) % slides.length);
+        }
+
+        function restartTimer() {
+            if (timer) clearInterval(timer);
+            timer = setInterval(nextSlide, 4600);
+        }
+
+        restartTimer();
+    </script>
+</body>
+</html>
