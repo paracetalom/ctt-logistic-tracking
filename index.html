@@ -203,6 +203,68 @@
             background: var(--bg-white);
             cursor: pointer;
         }
+    
+        @media (max-width: 768px) {
+            body {
+                overflow-x: hidden;
+            }
+            .topbar, header, nav {
+                height: auto !important;
+                min-height: 56px;
+                padding: 10px 14px !important;
+                flex-wrap: wrap !important;
+                gap: 8px !important;
+            }
+            .topbar-right, .nav-links, .header-actions {
+                width: 100%;
+                display: flex !important;
+                flex-wrap: nowrap !important;
+                overflow-x: auto !important;
+                gap: 8px !important;
+                padding-bottom: 4px;
+                -webkit-overflow-scrolling: touch;
+            }
+            .topbar-right a, .topbar-right button, .nav-links a, .nav-links button {
+                white-space: nowrap !important;
+                flex-shrink: 0 !important;
+                font-size: 12px !important;
+                padding: 6px 10px !important;
+            }
+            .stats-grid, .kpi-grid, .summary-grid, [class*="stat"] {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                gap: 10px !important;
+            }
+            .stat-card, .kpi-card {
+                padding: 12px !important;
+                min-width: 0 !important;
+            }
+            .form-grid, .form-row, .input-grid {
+                grid-template-columns: 1fr !important;
+                gap: 10px !important;
+            }
+            input, select, textarea, button {
+                max-width: 100% !important;
+                min-width: 0 !important;
+                box-sizing: border-box !important;
+            }
+            .table-wrap, .table-responsive, table {
+                display: block;
+                width: 100% !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch;
+            }
+            .section-head, .card-head, .toolbar {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 10px !important;
+            }
+            .container, .main-content, .page-wrap {
+                padding-left: 12px !important;
+                padding-right: 12px !important;
+                max-width: 100% !important;
+            }
+        }
+
     </style>
 </head>
 <body>
