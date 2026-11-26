@@ -308,25 +308,53 @@
         let markersLayer = L.layerGroup();
         let routesLayer = L.layerGroup();
 
-        const map = L.map('map', { center: [13.2, 100.8], zoom: 6, zoomControl: false, worldCopyJump: true });
+        const map = L.map('map', {
+            center: [13.2, 100.8],
+            zoom: 6,
+            zoomControl: false,
+            worldCopyJump: false,
+            inertia: true,
+            inertiaDeceleration: 1600,
+            inertiaMaxSpeed: 2200,
+            easeLinearity: 0.15,
+            maxBounds: [[-82, -1080], [82, 1080]],
+            maxBoundsViscosity: 0.15
+        });
 
         // คลิกพื้นที่ว่างบนแผนที่เพื่อปิดแผงด้านขวา
         map.on('click', () => closeDrawer());
 
+        function shiftGeoJsonCoords(geoData, lngOffset) {
+            const clone = JSON.parse(JSON.stringify(geoData));
+            const shiftRing = (ring) => ring.forEach(pt => { pt[0] += lngOffset; });
+            clone.features.forEach(feat => {
+                if (!feat.geometry) return;
+                const { type, coordinates } = feat.geometry;
+                if (type === 'Polygon') {
+                    coordinates.forEach(shiftRing);
+                } else if (type === 'MultiPolygon') {
+                    coordinates.forEach(poly => poly.forEach(shiftRing));
+                }
+            });
+            return clone;
+        }
+
         fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json')
             .then(r => r.json())
             .then(geo => {
-                L.geoJSON(geo, {
-                    style: feature => {
-                        const isTH = feature.id === 'THA';
-                        return {
-                            color: isTH ? '#002B88' : '#94A3B8',
-                            weight: isTH ? 1.8 : 1,
-                            fillColor: isTH ? '#002B88' : '#CBD5E1',
-                            fillOpacity: isTH ? 1 : 0.85
-                        };
-                    }
-                }).addTo(map);
+                [-720, -360, 0, 360, 720].forEach(offset => {
+                    L.geoJSON(shiftGeoJsonCoords(geo, offset), {
+                        style: feature => {
+                            const isTH = feature.id === 'THA';
+                            return {
+                                color: isTH ? '#002B88' : '#94A3B8',
+                                weight: isTH ? 1.8 : 1,
+                                fillColor: isTH ? '#002B88' : '#CBD5E1',
+                                fillOpacity: isTH ? 1 : 0.85
+                            };
+                        }
+                    }).addTo(map);
+                });
                 routesLayer.bringToFront();
                 markersLayer.bringToFront();
             });
@@ -485,7 +513,7 @@
             markersLayer.clearLayers();
             routesLayer.clearLayers();
 
-            const worldShifts = [-360, 0, 360];
+            const worldShifts = [-720, -360, 0, 360, 720];
 
             worldShifts.forEach(shift => {
                 const hubPt = [BKK_HUB[0], BKK_HUB[1] + shift];
