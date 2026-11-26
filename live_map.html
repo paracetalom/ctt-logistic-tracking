@@ -308,7 +308,7 @@
         let markersLayer = L.layerGroup();
         let routesLayer = L.layerGroup();
 
-        const map = L.map('map', { center: [13.2, 100.8], zoom: 6, zoomControl: false });
+        const map = L.map('map', { center: [13.2, 100.8], zoom: 6, zoomControl: false, worldCopyJump: true });
 
         // คลิกพื้นที่ว่างบนแผนที่เพื่อปิดแผงด้านขวา
         map.on('click', () => closeDrawer());
@@ -485,20 +485,26 @@
             markersLayer.clearLayers();
             routesLayer.clearLayers();
 
-            // หมุดคลังสินค้ากลาง CTT Free Zone
-            const hubMarker = L.marker(BKK_HUB, { icon: L.divIcon({ className: 'pin-hub', iconSize: [12, 12] }) })
-                .addTo(markersLayer);
-            hubMarker.on('click', (e) => {
-                L.DomEvent.stopPropagation(e);
-                document.getElementById('drawer-title').textContent = 'สถานีหลัก CTT Free Zone';
-                document.getElementById('drawer-body').innerHTML = `
-                    <div class="detail-wrap">
-                        <div style="font-weight:700;font-size:16px;color:#002B88;margin-bottom:6px;">CTT FREEZONE CENTRAL HUB</div>
-                        <p style="font-size:13px;color:#475569;margin-bottom:14px;">คลังสินค้าเขตปลอดอากร ด่านตรวจปล่อยพิธีการศุลกากร และศูนย์กระจายสินค้าหลัก</p>
-                        <button class="btn-all-list" onclick="openAllList()">ดูรายการสินค้าที่ออกจากคลังนี้</button>
-                    </div>
-                `;
-                document.getElementById('drawer-panel').classList.add('open');
+            const worldShifts = [-360, 0, 360];
+
+            worldShifts.forEach(shift => {
+                const hubPt = [BKK_HUB[0], BKK_HUB[1] + shift];
+
+                // หมุดคลังสินค้ากลาง CTT Free Zone ในแต่ละรอบโลก
+                const hubMarker = L.marker(hubPt, { icon: L.divIcon({ className: 'pin-hub', iconSize: [12, 12] }) })
+                    .addTo(markersLayer);
+                hubMarker.on('click', (e) => {
+                    L.DomEvent.stopPropagation(e);
+                    document.getElementById('drawer-title').textContent = 'สถานีหลัก CTT Free Zone';
+                    document.getElementById('drawer-body').innerHTML = `
+                        <div class="detail-wrap">
+                            <div style="font-weight:700;font-size:16px;color:#002B88;margin-bottom:6px;">CTT FREEZONE CENTRAL HUB</div>
+                            <p style="font-size:13px;color:#475569;margin-bottom:14px;">คลังสินค้าเขตปลอดอากร ด่านตรวจปล่อยพิธีการศุลกากร และศูนย์กระจายสินค้าหลัก</p>
+                            <button class="btn-all-list" onclick="openAllList()">ดูรายการสินค้าที่ออกจากคลังนี้</button>
+                        </div>
+                    `;
+                    document.getElementById('drawer-panel').classList.add('open');
+                });
             });
 
             const filtered = currentFilter === 'ALL'
@@ -511,27 +517,31 @@
             filtered.forEach(s => {
                 const isDone = s.status === 'จัดส่งสำเร็จ';
                 const isTransit = s.status === 'กำลังจัดส่ง';
-
                 const lineColor = isTransit ? '#E10600' : (isDone ? '#4ADE80' : '#93C5FD');
-                L.polyline([BKK_HUB, s.coords], {
-                    color: lineColor,
-                    weight: isTransit ? 2 : 1.2,
-                    opacity: isTransit ? 0.95 : 0.65,
-                    dashArray: isTransit ? '6, 5' : '2, 5'
-                }).addTo(routesLayer);
-
                 const pinClass = isDone ? 'pin-done' : (isTransit ? 'pin-truck' : 'pin-hub');
                 const pinSize = isDone ? [10, 10] : (isTransit ? [14, 14] : [12, 12]);
 
-                const marker = L.marker(s.coords, {
-                    icon: L.divIcon({ className: pinClass, iconSize: pinSize })
-                }).addTo(markersLayer);
+                worldShifts.forEach(shift => {
+                    const hubPt = [BKK_HUB[0], BKK_HUB[1] + shift];
+                    const itemPt = [s.coords[0], s.coords[1] + shift];
 
-                // คลิกที่หมุดรถบนแผนที่ -> เปิดแผงด้านขวาแสดงข้อมูลคันนั้นทันที
-                marker.on('click', (e) => {
-                    L.DomEvent.stopPropagation(e);
-                    map.flyTo(s.coords, 8, { duration: 0.7 });
-                    openSingleDetail(s);
+                    L.polyline([hubPt, itemPt], {
+                        color: lineColor,
+                        weight: isTransit ? 2 : 1.2,
+                        opacity: isTransit ? 0.95 : 0.65,
+                        dashArray: isTransit ? '6, 5' : '2, 5'
+                    }).addTo(routesLayer);
+
+                    const marker = L.marker(itemPt, {
+                        icon: L.divIcon({ className: pinClass, iconSize: pinSize })
+                    }).addTo(markersLayer);
+
+                    // คลิกที่หมุดรถบนแผนที่ -> เปิดแผงด้านขวาแสดงข้อมูลคันนั้นทันที
+                    marker.on('click', (e) => {
+                        L.DomEvent.stopPropagation(e);
+                        map.flyTo(itemPt, 8, { duration: 0.7 });
+                        openSingleDetail(s);
+                    });
                 });
             });
         }
