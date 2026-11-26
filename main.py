@@ -398,9 +398,13 @@ def delete_shipment(tracking_no: str, user: dict = Depends(require_roles(["admin
     return {"message": "ลบรายการสำเร็จ (สิทธิ์ Admin)"}
 
 # --- Frontend Pages ---
+@app.get("/dashboard")
+def serve_dashboard():
+    return FileResponse("index.html", media_type="text/html")
+
 @app.get("/")
 def serve_ui():
-    return FileResponse("index.html")
+    return FileResponse("showcase.html")
 
 @app.get("/track")
 async def public_tracking_page():
