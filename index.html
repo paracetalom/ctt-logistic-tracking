@@ -276,6 +276,7 @@ img[src="/logo.png"] {
 }
 
 </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -396,7 +397,28 @@ img[src="/logo.png"] {
                     </table>
                 </div>
             </section>
-        </main>
+        
+            <!-- Free Zone Customs FX Rate & Calculator Widget -->
+            <div style="background:#FFFFFF;border:1px solid #CBD5E1;border-left:4px solid #002B88;border-radius:4px;padding:14px 18px;margin-bottom:20px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:14px;">
+                <div>
+                    <div style="font-size:11px;font-weight:700;color:#002B88;letter-spacing:0.5px;">CUSTOMS & FREEZONE EXCHANGE RATE (LIVE)</div>
+                    <div id="fx-rates-display" class="mono" style="font-size:13px;color:#0F172A;margin-top:4px;">กำลังโหลดอัตราแลกเปลี่ยนล่าสุด...</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <span style="font-size:12px;color:#475569;font-weight:600;">ประเมินมูลค่าใบขนฯ:</span>
+                    <input type="number" id="fx-amount" value="1000" min="0" step="any" oninput="calcCustomsThb()" style="width:110px;padding:6px 10px;border:1px solid #CBD5E1;border-radius:4px;font-size:13px;">
+                    <select id="fx-currency" onchange="calcCustomsThb()" style="padding:6px 8px;border:1px solid #CBD5E1;border-radius:4px;font-size:13px;background:#F8FAFC;">
+                        <option value="USD">USD</option>
+                        <option value="CNY">CNY</option>
+                        <option value="JPY">JPY</option>
+                        <option value="EUR">EUR</option>
+                    </select>
+                    <span style="font-size:13px;color:#64748B;">=</span>
+                    <strong id="fx-thb-result" class="mono" style="font-size:15px;color:#E10600;">- บาท</strong>
+                </div>
+            </div>
+
+    </main>
     </div>
 
     <script>
@@ -511,6 +533,8 @@ img[src="/logo.png"] {
                         </td>
                         <td style="font-size:12px;color:#64748B;">${new Date(s.updated_at).toLocaleString('th-TH')}</td>
                         <td style="text-align:right;white-space:nowrap;">
+                            ${s.signature_data ? `<button type="button" onclick="viewPodSignature('${s.tracking_no}')" style="color:#D97706;background:none;border:none;font-size:12px;font-weight:600;cursor:pointer;margin-right:10px;">ลายเซ็น e-POD</button>` : ''}
+                            <button type="button" onclick="openWaybill('${s.tracking_no}')" style="color:#15803D;background:none;border:none;font-size:12px;font-weight:600;cursor:pointer;margin-right:10px;">ใบปะหน้า QR</button>
                             <a href="/track?no=${encodeURIComponent(s.tracking_no)}" target="_blank" style="color:#002B88;text-decoration:none;font-size:12px;font-weight:600;margin-right:10px;">ไทม์ไลน์</a>
                             ${isAdmin ? `<button onclick="deleteRow('${s.tracking_no}')" style="color:#E10600;background:none;border:none;font-size:12px;font-weight:600;cursor:pointer;">ลบ</button>` : ''}
                         </td>
@@ -592,6 +616,104 @@ img[src="/logo.png"] {
             link.click();
         }
 
+
+        
+        function viewPodSignature(trackingNo) {
+            const s = allShipments.find(item => item.tracking_no === trackingNo);
+            if (!s || !s.signature_data) return;
+            document.getElementById('sv-tracking').textContent = s.tracking_no;
+            document.getElementById('sv-signer').textContent = s.signed_by || s.receiver || '-';
+            document.getElementById('sv-img').src = s.signature_data;
+            document.getElementById('sv-time').textContent = s.signed_at ? 'บันทึกเมื่อ: ' + s.signed_at : '';
+            document.getElementById('sig-viewer-modal').style.display = 'flex';
+        }
+
+        function openWaybill(trackingNo) {
+            const s = allShipments.find(item => item.tracking_no === trackingNo);
+            if (!s) return;
+            document.getElementById('wb-tracking').textContent = s.tracking_no;
+            document.getElementById('wb-customs').textContent = s.customs_doc_no || '-';
+            document.getElementById('wb-container').textContent = s.container_no || '-';
+            document.getElementById('wb-service').textContent = s.service_type || 'Free Zone Warehouse';
+            document.getElementById('wb-sender').textContent = s.sender;
+            document.getElementById('wb-receiver').textContent = `${s.receiver} (${s.destination})`;
+            document.getElementById('wb-vehicle').textContent = s.vehicle_plate || s.plate_number || 'ยังไม่ระบุรถ';
+
+            const qrBox = document.getElementById('wb-qrcode');
+            qrBox.innerHTML = '';
+            const baseOrigin = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://192.168.10.131:8080' : window.location.origin;
+            const trackUrl = `${baseOrigin}/track?no=${encodeURIComponent(s.tracking_no)}`;
+            if (window.QRCode) {
+                new QRCode(qrBox, { text: trackUrl, width: 96, height: 96, colorDark: "#002B88", colorLight: "#FFFFFF" });
+            }
+            document.getElementById('waybill-modal').style.display = 'flex';
+        }
+
+        function closeWaybill() {
+            document.getElementById('waybill-modal').style.display = 'none';
+        }
+
+        function printWaybill() {
+            const content = document.getElementById('waybill-print-area').outerHTML;
+            const win = window.open('', '_blank', 'width=520,height=640');
+            win.document.write(`<html><head><title>Print Waybill</title><style>body{font-family:sans-serif;padding:20px;}.mono{font-family:monospace;}</style></head><body>${content}<script>window.onload=function(){window.print();window.close();}<\/script>
+    <!-- e-POD Signature Viewer Modal -->
+    <div id="sig-viewer-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.55);z-index:2100;align-items:center;justify-content:center;padding:16px;">
+        <div style="background:#FFFFFF;border-top:4px solid #16A34A;border-radius:4px;max-width:400px;width:100%;padding:22px;text-align:center;box-shadow:0 10px 25px rgba(0,0,0,0.18);">
+            <div style="font-size:11px;font-weight:700;color:#16A34A;">ELECTRONIC PROOF OF DELIVERY</div>
+            <h3 id="sv-tracking" class="mono" style="margin:4px 0 8px 0;color:#002B88;">-</h3>
+            <div style="font-size:13px;color:#334155;margin-bottom:10px;">ผู้เซ็นรับสินค้า: <strong id="sv-signer">-</strong></div>
+            <img id="sv-img" src="" alt="e-POD Signature" style="max-width:100%;max-height:160px;border:1px solid #CBD5E1;border-radius:4px;background:#F8FAFC;padding:8px;">
+            <div id="sv-time" style="font-size:11px;color:#64748B;margin-top:8px;"></div>
+            <button type="button" onclick="document.getElementById('sig-viewer-modal').style.display='none'" class="btn-outline" style="margin-top:14px;width:100%;">ปิดหน้าต่าง</button>
+        </div>
+    </div>
+
+</body></html>`);
+            win.document.close();
+        }
+
+
+        let liveFxRates = { USD: 34.50, CNY: 4.80, JPY: 0.23, EUR: 37.20 };
+
+        async function loadCustomsFxRates() {
+            try {
+                const res = await fetch('https://api.frankfurter.app/latest?from=THB&to=USD,CNY,JPY,EUR');
+                if (!res.ok) throw new Error('FX fetch failed');
+                const data = await res.json();
+                if (data && data.rates) {
+                    liveFxRates = {
+                        USD: +(1 / data.rates.USD).toFixed(2),
+                        CNY: +(1 / data.rates.CNY).toFixed(2),
+                        JPY: +(1 / data.rates.JPY).toFixed(4),
+                        EUR: +(1 / data.rates.EUR).toFixed(2)
+                    };
+                    document.getElementById('fx-rates-display').innerHTML =
+                        `1 USD = <strong>${liveFxRates.USD}</strong> THB &nbsp;|&nbsp; ` +
+                        `1 CNY = <strong>${liveFxRates.CNY}</strong> THB &nbsp;|&nbsp; ` +
+                        `100 JPY = <strong>${(liveFxRates.JPY * 100).toFixed(2)}</strong> THB &nbsp;|&nbsp; ` +
+                        `1 EUR = <strong>${liveFxRates.EUR}</strong> THB`;
+                    calcCustomsThb();
+                }
+            } catch (e) {
+                document.getElementById('fx-rates-display').textContent =
+                    `1 USD = ${liveFxRates.USD} THB | 1 CNY = ${liveFxRates.CNY} THB (อัตราอ้างอิง)`;
+                calcCustomsThb();
+            }
+        }
+
+        function calcCustomsThb() {
+            const amt = parseFloat(document.getElementById('fx-amount')?.value || 0);
+            const cur = document.getElementById('fx-currency')?.value || 'USD';
+            const rate = liveFxRates[cur] || 1;
+            const thb = amt * rate;
+            const out = document.getElementById('fx-thb-result');
+            if (out) {
+                out.textContent = thb.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' บาท';
+            }
+        }
+
+        loadCustomsFxRates();
         initApp();
     
 
@@ -624,5 +746,40 @@ function resetTableFilters() {
   </div>
   <span>ระบบบริหารจัดการคลังสินค้าเขตปลอดอากรและควบคุมการขนส่ง</span>
 </footer>
+
+    <!-- Waybill QR Modal -->
+    <div id="waybill-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.55);z-index:2000;align-items:center;justify-content:center;padding:16px;">
+        <div style="background:#FFFFFF;border:1px solid #CBD5E1;border-top:4px solid #002B88;border-radius:4px;max-width:440px;width:100%;padding:24px;box-shadow:0 10px 25px rgba(0,0,0,0.15);">
+            <div id="waybill-print-area" style="border:1.5px solid #0F172A;padding:18px;border-radius:4px;background:#FFFFFF;">
+                <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid #0F172A;padding-bottom:10px;margin-bottom:12px;">
+                    <img src="/logo.png" alt="CTT Logistics" style="height:30px;width:auto;object-fit:contain;">
+                    <span class="mono" style="font-size:11px;font-weight:700;background:#002B88;color:#FFFFFF;padding:3px 8px;border-radius:2px;">FREEZONE WAYBILL</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:12px;">
+                    <div>
+                        <div style="font-size:11px;color:#64748B;">TRACKING NUMBER</div>
+                        <div id="wb-tracking" class="mono" style="font-size:20px;font-weight:700;color:#002B88;">-</div>
+                        <div style="font-size:11px;color:#475569;margin-top:4px;">ใบขนฯ: <strong id="wb-customs" class="mono">-</strong></div>
+                        <div style="font-size:11px;color:#475569;">ตู้คอนเทนเนอร์: <strong id="wb-container" class="mono">-</strong></div>
+                    </div>
+                    <div id="wb-qrcode" style="padding:6px;border:1px solid #E2E8F0;background:#FFFFFF;"></div>
+                </div>
+                <div style="border-top:1px dashed #CBD5E1;padding-top:10px;font-size:12px;line-height:1.6;">
+                    <div><span style="color:#64748B;">ประเภทบริการ:</span> <strong id="wb-service">-</strong></div>
+                    <div><span style="color:#64748B;">ผู้ส่งต้นทาง:</span> <strong id="wb-sender">-</strong></div>
+                    <div><span style="color:#64748B;">ผู้รับปลายทาง:</span> <strong id="wb-receiver">-</strong></div>
+                    <div><span style="color:#64748B;">รถขนส่งที่ได้รับมอบหมาย:</span> <strong id="wb-vehicle">-</strong></div>
+                </div>
+                <div style="margin-top:10px;padding-top:8px;border-top:1px solid #E2E8F0;font-size:10px;color:#64748B;text-align:center;">
+                    สแกน QR Code เพื่อตรวจสอบสถานะพิธีการศุลกากรและตำแหน่งขนส่งแบบเรียลไทม์
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
+                <button type="button" onclick="closeWaybill()" class="btn-outline">ปิดหน้าต่าง</button>
+                <button type="button" onclick="printWaybill()" class="btn-red">สั่งพิมพ์ใบปะหน้า (Print)</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>

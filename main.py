@@ -478,3 +478,59 @@ async def custom_http_exception_handler(request, exc):
     if request.url.path.startswith("/api/"):
         return JSONResponse(content={"detail": exc.detail}, status_code=exc.status_code)
     return HTMLResponse(content=str(exc.detail), status_code=exc.status_code)
+
+
+
+
+from pydantic import BaseModel
+
+class PodSignatureRequest(BaseModel):
+    signed_by: str
+    signature_data: str
+
+@app.post("/api/shipments/{tracking_no}/pod")
+def submit_pod_signature(tracking_no: str, payload: PodSignatureRequest):
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        for col_sql in [
+            "ALTER TABLE shipments ADD COLUMN signed_by VARCHAR(255) NULL",
+            "ALTER TABLE shipments ADD COLUMN signature_data LONGTEXT NULL",
+            "ALTER TABLE shipments ADD COLUMN signed_at DATETIME NULL"
+        ]:
+            try:
+                cursor.execute(col_sql)
+            except Exception:
+                pass
+
+        cursor.execute("SELECT * FROM shipments WHERE tracking_no = %s", (tracking_no,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="ไม่พบหมายเลขพัสดุ")
+
+        signer_name = payload.signed_by.strip() or row.get("receiver", "ผู้รับสินค้า")
+        cursor.execute(
+            """UPDATE shipments
+               SET status = 'จัดส่งสำเร็จ',
+                   signed_by = %s,
+                   signature_data = %s,
+                   signed_at = NOW()
+               WHERE tracking_no = %s""",
+            (signer_name, payload.signature_data, tracking_no)
+        )
+        try:
+            cursor.execute(
+                "INSERT INTO tracking_logs (tracking_no, status, location, note) VALUES (%s, %s, %s, %s)",
+                (tracking_no, "จัดส่งสำเร็จ", row.get("destination", "ปลายทาง"), f"เซ็นรับสินค้าเรียบร้อยโดย: {signer_name}")
+            )
+        except Exception:
+            pass
+        conn.commit()
+        return {"message": "บันทึกลายเซ็นรับพัสดุสำเร็จ", "tracking_no": tracking_no, "status": "จัดส่งสำเร็จ"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()

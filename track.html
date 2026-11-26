@@ -224,9 +224,16 @@ img[src="/logo.png"] {
     
 
 
-</main>
 
-    <script>
+        
+
+    </main>
+
+    
+<script>
+
+        
+
         document.getElementById('track-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const code = document.getElementById('track-input').value.trim().toUpperCase();
@@ -275,6 +282,9 @@ img[src="/logo.png"] {
             }
         });
 
+    
+        
+
     </script>
 
 <footer style="border-top:1px solid #E2E8F0;padding:16px 28px;margin-top:40px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#64748B;background:#FFFFFF;">
@@ -284,5 +294,152 @@ img[src="/logo.png"] {
   </div>
   <span>ระบบบริหารจัดการคลังสินค้าเขตปลอดอากรและควบคุมการขนส่ง</span>
 </footer>
+
+<!-- e-POD Mobile Signature Section -->
+<div id="epod-card" style="display:none;max-width:720px;margin:20px auto 40px auto;background:#FFFFFF;border:1px solid #CBD5E1;border-top:4px solid #16A34A;border-radius:6px;padding:20px;box-shadow:0 4px 12px rgba(0,0,0,0.06);font-family:sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div>
+            <div style="font-size:11px;font-weight:700;color:#16A34A;letter-spacing:0.5px;">ELECTRONIC PROOF OF DELIVERY (e-POD)</div>
+            <h3 style="margin:2px 0 0 0;font-size:16px;color:#0F172A;">เซ็นชื่อยืนยันการรับสินค้า</h3>
+        </div>
+        <span id="epod-badge" style="font-size:11px;padding:4px 10px;border-radius:4px;background:#DCFCE7;color:#166534;font-weight:600;">พร้อมเซ็นรับ</span>
+    </div>
+
+    <div id="epod-completed-view" style="display:none;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:4px;padding:14px;text-align:center;">
+        <div style="font-size:13px;color:#475569;margin-bottom:8px;">ลงนามรับสินค้าเรียบร้อยแล้วโดย: <strong id="epod-signed-name" style="color:#0F172A;">-</strong></div>
+        <img id="epod-signed-img" src="" alt="Signature" style="max-height:130px;border:1px dashed #CBD5E1;background:#FFFFFF;padding:6px;border-radius:4px;">
+        <div id="epod-signed-time" style="font-size:11px;color:#64748B;margin-top:6px;"></div>
+    </div>
+
+    <div id="epod-form-view">
+        <div style="margin-bottom:10px;">
+            <label style="display:block;font-size:12px;color:#475569;margin-bottom:4px;">ชื่อ-นามสกุล ผู้รับสินค้า:</label>
+            <input type="text" id="epod-signer-input" placeholder="ระบุชื่อผู้เซ็นรับพัสดุ" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #CBD5E1;border-radius:4px;font-size:14px;">
+        </div>
+        <div style="font-size:12px;color:#475569;margin-bottom:4px;">ใช้นิ้วหรือเมาส์ลากเซ็นชื่อในกรอบด้านล่าง:</div>
+        <canvas id="sig-canvas" width="380" height="160" style="width:100%;height:160px;border:1.5px dashed #94A3B8;border-radius:4px;background:#F8FAFC;touch-action:none;cursor:crosshair;display:block;"></canvas>
+        <div style="display:flex;gap:10px;margin-top:12px;">
+            <button type="button" onclick="clearSigCanvas()" style="flex:1;padding:10px;border:1px solid #CBD5E1;background:#FFFFFF;color:#334155;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;">ล้างลายเซ็น</button>
+            <button type="button" onclick="submitPodSignature()" style="flex:2;padding:10px;border:none;background:#16A34A;color:#FFFFFF;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;">ยืนยันเซ็นรับพัสดุ</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let sigDrawing = false;
+let sigHasStroke = false;
+let currentPodTracking = '';
+
+function initSigPad(shipment) {
+    const card = document.getElementById('epod-card');
+    if (!card || !shipment || !shipment.tracking_no) return;
+    card.style.display = 'block';
+    currentPodTracking = shipment.tracking_no;
+
+    const doneView = document.getElementById('epod-completed-view');
+    const formView = document.getElementById('epod-form-view');
+    const badge = document.getElementById('epod-badge');
+
+    if (shipment.signature_data) {
+        doneView.style.display = 'block';
+        formView.style.display = 'none';
+        badge.textContent = 'เซ็นรับแล้ว ✓';
+        document.getElementById('epod-signed-name').textContent = shipment.signed_by || shipment.receiver || '-';
+        document.getElementById('epod-signed-img').src = shipment.signature_data;
+        document.getElementById('epod-signed-time').textContent = shipment.signed_at ? 'เวลาที่บันทึก: ' + shipment.signed_at : '';
+        return;
+    }
+
+    doneView.style.display = 'none';
+    formView.style.display = 'block';
+    badge.textContent = shipment.status === 'จัดส่งสำเร็จ' ? 'จัดส่งสำเร็จ' : 'พร้อมเซ็นรับ';
+    const inputEl = document.getElementById('epod-signer-input');
+    if (inputEl && !inputEl.value) inputEl.value = shipment.receiver || '';
+
+    const canvas = document.getElementById('sig-canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#002B88';
+
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+            x: (clientX - rect.left) * (canvas.width / rect.width),
+            y: (clientY - rect.top) * (canvas.height / rect.height)
+        };
+    }
+
+    canvas.onmousedown = canvas.ontouchstart = (e) => {
+        sigDrawing = true;
+        sigHasStroke = true;
+        const p = getPos(e);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+    };
+    canvas.onmousemove = canvas.ontouchmove = (e) => {
+        if (!sigDrawing) return;
+        e.preventDefault();
+        const p = getPos(e);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+    };
+    window.onmouseup = window.ontouchend = () => { sigDrawing = false; };
+}
+
+function clearSigCanvas() {
+    const canvas = document.getElementById('sig-canvas');
+    if (!canvas) return;
+    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    sigHasStroke = false;
+}
+
+async function submitPodSignature() {
+    if (!sigHasStroke) {
+        alert('กรุณาเซ็นชื่อในกรอบก่อนกดยืนยันครับ');
+        return;
+    }
+    const signer = document.getElementById('epod-signer-input').value.trim();
+    if (!signer) {
+        alert('กรุณาระบุชื่อผู้รับสินค้า');
+        return;
+    }
+    const sigData = document.getElementById('sig-canvas').toDataURL('image/png');
+    try {
+        const res = await fetch(`/api/shipments/${encodeURIComponent(currentPodTracking)}/pod`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ signed_by: signer, signature_data: sigData })
+        });
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || 'บันทึกไม่สำเร็จ (' + res.status + ')');
+        }
+        alert('บันทึกลายเซ็นรับสินค้าเรียบร้อยแล้ว!');
+        location.reload();
+    } catch (err) {
+        alert('เกิดข้อผิดพลาด: ' + err.message);
+    }
+}
+
+// โหลดข้อมูลพัสดุจาก URL (?no=...) โดยตรงเพื่อให้กล่องเซ็นชื่อแสดงผลเสมอ
+window.addEventListener('DOMContentLoaded', async () => {
+    const params = new URLSearchParams(window.location.search);
+    const trackingNo = params.get('no') || params.get('tracking');
+    if (!trackingNo) return;
+    try {
+        const res = await fetch('/api/shipments');
+        if (res.ok) {
+            const list = await res.json();
+            const items = Array.isArray(list) ? list : (list.shipments || []);
+            const found = items.find(x => x.tracking_no === trackingNo);
+            if (found) initSigPad(found);
+        }
+    } catch (e) {}
+});
+</script>
+
 </body>
 </html>

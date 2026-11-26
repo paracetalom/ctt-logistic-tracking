@@ -312,7 +312,58 @@ img[src="/logo.png"] {
   display: block;
 }
 
-</style>
+
+        /* Rain Effect Overlay & Weather Alert Banner */
+        #rain-overlay {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 900;
+            display: none;
+            overflow: hidden;
+            background: radial-gradient(circle at 42% 50%, rgba(15, 23, 42, 0.08) 32%, rgba(15, 23, 42, 0.48) 100%);
+            box-shadow: inset 0 0 110px rgba(15, 23, 42, 0.55);
+            backdrop-filter: saturate(0.75) brightness(0.94);
+            transition: all 0.45s ease;
+        }
+        .rain-drop {
+            position: absolute;
+            top: -30px;
+            width: 2px;
+            height: 28px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(125, 211, 252, 0.92));
+            border-radius: 2px;
+            animation: rainFall linear infinite;
+        }
+        @keyframes rainFall {
+            to { transform: translateY(105vh) translateX(-18px); }
+        }
+        .weather-alert-card {
+            margin-top: 12px;
+            padding: 10px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            line-height: 1.5;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .weather-warn {
+            background: #FEF3C7;
+            border: 1.5px solid #F59E0B;
+            border-left: 5px solid #D97706;
+            color: #92400E;
+            font-weight: 600;
+        }
+        .weather-ok {
+            background: #F0FDF4;
+            border: 1px solid #BBF7D0;
+            border-left: 5px solid #16A34A;
+            color: #166534;
+        }
+
+    </style>
 </head>
 <body>
 
@@ -382,6 +433,95 @@ img[src="/logo.png"] {
         let currentFilter = 'ALL';
         let markersLayer = L.layerGroup();
         let routesLayer = L.layerGroup();
+        const routeCache = {};
+
+        function setRainEffect(active) {
+            const overlay = document.getElementById('rain-overlay');
+            if (!overlay) return;
+            if (!active) {
+                overlay.style.display = 'none';
+                overlay.innerHTML = '';
+                return;
+            }
+            overlay.style.display = 'block';
+            overlay.innerHTML = '';
+            for (let i = 0; i < 110; i++) {
+                const drop = document.createElement('div');
+                drop.className = 'rain-drop';
+                const isLeft = i % 2 === 0;
+                const posPct = isLeft ? (Math.random() * 24) : (76 + Math.random() * 24);
+                drop.style.left = posPct + 'vw';
+                drop.style.opacity = (0.4 + Math.random() * 0.5).toFixed(2);
+                drop.style.animationDuration = (0.5 + Math.random() * 0.4) + 's';
+                drop.style.animationDelay = (Math.random() * 1.2) + 's';
+                overlay.appendChild(drop);
+            }
+        }
+
+        const weatherCache = {};
+
+        function decodeWeatherCode(code) {
+            if (code === 0) return { text: 'ท้องฟ้าแจ่มใส', warn: false };
+            if (code <= 3) return { text: 'มีเมฆบางส่วน', warn: false };
+            if (code <= 48) return { text: 'มีหมอกลงจัด (ระวังทัศนวิสัย)', warn: true };
+            if (code <= 67) return { text: 'ฝนตก (ระวังสินค้าเปียกชื้น)', warn: true };
+            if (code <= 82) return { text: 'ฝนตกหนัก (ควรชะลอความเร็ว)', warn: true };
+            if (code >= 95) return { text: 'พายุฝนฟ้าคะนอง (เฝ้าระวังสูง)', warn: true };
+            return { text: 'สภาพอากาศปกติ', warn: false };
+        }
+
+        async function fetchDestWeather(lat, lng) {
+            const key = `${lat.toFixed(2)},${lng.toFixed(2)}`;
+            if (weatherCache[key]) return weatherCache[key];
+            try {
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('Weather fetch failed');
+                const data = await res.json();
+                if (data && data.current_weather) {
+                    const cw = data.current_weather;
+                    const info = decodeWeatherCode(cw.weathercode);
+                    const result = {
+                        temp: cw.temperature,
+                        wind: cw.windspeed,
+                        desc: info.text,
+                        warn: info.warn
+                    };
+                    weatherCache[key] = result;
+                    return result;
+                }
+            } catch (e) {}
+            return null;
+        }
+
+
+        async function fetchRealRoute(hubPt, destPt) {
+            const key = `${hubPt[0].toFixed(4)},${hubPt[1].toFixed(4)}->${destPt[0].toFixed(4)},${destPt[1].toFixed(4)}`;
+            if (routeCache[key]) return routeCache[key];
+            try {
+                const url = `https://router.project-osrm.org/route/v1/driving/${hubPt[1]},${hubPt[0]};${destPt[1]},${destPt[0]}?overview=full&geometries=geojson`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('OSRM failed');
+                const data = await res.json();
+                if (data.routes && data.routes.length > 0) {
+                    const r = data.routes[0];
+                    const coords = r.geometry.coordinates.map(c => [c[1], c[0]]);
+                    const distKm = (r.distance / 1000).toFixed(1);
+                    const totalMin = Math.round(r.duration / 60);
+                    const hrs = Math.floor(totalMin / 60);
+                    const mins = totalMin % 60;
+                    const etaText = hrs > 0 ? `${hrs} ชม. ${mins} นาที` : `${mins} นาที`;
+                    routeCache[key] = { coords, distKm, etaText };
+                    return routeCache[key];
+                }
+            } catch (e) {
+                // Fallback กรณีออฟไลน์หรือ OSRM ช้า
+            }
+            const fallback = { coords: [hubPt, destPt], distKm: '-', etaText: 'คำนวณเส้นทางตรง' };
+            routeCache[key] = fallback;
+            return fallback;
+        }
+
 
         const map = L.map('map', {
             center: [13.2, 100.8],
@@ -479,6 +619,21 @@ img[src="/logo.png"] {
         }
 
         function openSingleDetail(s) {
+            setRainEffect(false);
+            if (s && s.coords) {
+                fetchDestWeather(s.coords[0], s.coords[1]).then(w => {
+                    const el = document.getElementById('detail-weather');
+                    const banner = document.getElementById('weather-banner');
+                    if (!el || !banner) return;
+                    if (w) {
+                        banner.className = w.warn ? 'weather-alert-card weather-warn' : 'weather-alert-card weather-ok';
+                        el.textContent = `${w.warn ? '🌧️ ' : '☀️ '}${w.desc} (${w.temp}°C, ลม ${w.wind} กม./ชม.)`;
+                        setRainEffect(w.warn);
+                    } else {
+                        el.textContent = 'ไม่มีข้อมูลอากาศ';
+                    }
+                });
+            }
             const panel = document.getElementById('drawer-panel');
             document.getElementById('drawer-title').textContent = 'ข้อมูลรถขนส่งและสินค้า';
             const isDone = s.status === 'จัดส่งสำเร็จ';
@@ -527,6 +682,20 @@ img[src="/logo.png"] {
                         <div class="detail-row">
                             <span class="detail-key">ผู้รับปลายทาง</span>
                             <span class="detail-val">${s.receiver} (${s.destination})</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-key">ระยะทางถนนจริง (OSRM)</span>
+                            <span class="detail-val mono" style="color:#002B88;">${s.routeDist ? s.routeDist + ' กม.' : 'กำลังคำนวณ...'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-key">เวลาเดินทางโดยประมาณ (ETA)</span>
+                            <span class="detail-val" style="color:#E10600;">${s.routeEta || 'กำลังคำนวณ...'}</span>
+                        </div>
+                        <div id="weather-banner" class="weather-alert-card weather-ok">
+                            <div>
+                                <div style="font-size:10px;opacity:0.8;text-transform:uppercase;letter-spacing:0.5px;">สภาพอากาศปลายทาง (LIVE)</div>
+                                <div id="detail-weather">กำลังตรวจสอบสภาพอากาศ...</div>
+                            </div>
                         </div>
                         <div class="detail-row">
                             <span class="detail-key">อัปเดตล่าสุด</span>
@@ -618,29 +787,32 @@ img[src="/logo.png"] {
             document.getElementById('location-counter').textContent = `${filtered.length} คัน/รายการ`;
             document.getElementById('top-count').textContent = filtered.length;
 
-            filtered.forEach(s => {
+            filtered.forEach(async (s) => {
                 const isDone = s.status === 'จัดส่งสำเร็จ';
                 const isTransit = s.status === 'กำลังจัดส่ง';
                 const lineColor = isTransit ? '#E10600' : (isDone ? '#4ADE80' : '#93C5FD');
                 const pinClass = isDone ? 'pin-done' : (isTransit ? 'pin-truck' : 'pin-hub');
                 const pinSize = isDone ? [10, 10] : (isTransit ? [14, 14] : [12, 12]);
 
+                const routeInfo = await fetchRealRoute(BKK_HUB, s.coords);
+                s.routeDist = routeInfo.distKm;
+                s.routeEta = routeInfo.etaText;
+
                 worldShifts.forEach(shift => {
-                    const hubPt = [BKK_HUB[0], BKK_HUB[1] + shift];
+                    const shiftedCoords = routeInfo.coords.map(pt => [pt[0], pt[1] + shift]);
                     const itemPt = [s.coords[0], s.coords[1] + shift];
 
-                    L.polyline([hubPt, itemPt], {
+                    L.polyline(shiftedCoords, {
                         color: lineColor,
-                        weight: isTransit ? 2 : 1.2,
-                        opacity: isTransit ? 0.95 : 0.65,
-                        dashArray: isTransit ? '6, 5' : '2, 5'
+                        weight: isTransit ? 3 : 1.6,
+                        opacity: isTransit ? 0.92 : 0.65,
+                        dashArray: isTransit ? null : '4, 6'
                     }).addTo(routesLayer);
 
                     const marker = L.marker(itemPt, {
                         icon: L.divIcon({ className: pinClass, iconSize: pinSize })
                     }).addTo(markersLayer);
 
-                    // คลิกที่หมุดรถบนแผนที่ -> เปิดแผงด้านขวาแสดงข้อมูลคันนั้นทันที
                     marker.on('click', (e) => {
                         L.DomEvent.stopPropagation(e);
                         map.flyTo(itemPt, 8, { duration: 0.7 });
@@ -652,5 +824,6 @@ img[src="/logo.png"] {
 
         loadShipments();
     </script>
+    <div id="rain-overlay"></div>
 </body>
 </html>
