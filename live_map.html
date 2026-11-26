@@ -30,6 +30,8 @@
             display: flex;
             flex-direction: column;
         }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
         .topbar {
             height: 58px;
             background: var(--bg-white);
@@ -43,8 +45,19 @@
         .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
         .divider-v { width: 1px; height: 22px; background: var(--border-strong); }
         .page-title { font-size: 14px; font-weight: 700; color: var(--ctt-navy); }
-        .topbar-right { display: flex; align-items: center; gap: 14px; }
+        .topbar-right { display: flex; align-items: center; gap: 12px; }
         .sync-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-sub); }
+        .btn-toggle-list {
+            background: var(--bg-white);
+            color: var(--ctt-navy);
+            border: 1px solid var(--ctt-navy);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-toggle-list:hover { background: var(--bg-subtle); }
         .btn-back {
             background: var(--ctt-navy);
             color: #FFFFFF;
@@ -60,39 +73,111 @@
         #map { width: 100%; height: 100%; background: var(--bg-white) !important; }
         .leaflet-control-attribution { display: none; }
 
+        /* Floating Top-Left Compact Filter Pill */
+        .floating-filter {
+            position: absolute;
+            top: 16px; left: 16px;
+            background: var(--bg-white);
+            border: 1px solid var(--border-strong);
+            border-radius: 4px;
+            padding: 4px;
+            z-index: 900;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .filter-btn {
+            background: transparent; border: none; color: var(--ink-sub);
+            font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 2px; cursor: pointer;
+            font-family: inherit;
+        }
+        .filter-btn.active { background: var(--ctt-navy); color: #FFFFFF; }
+        .filter-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ctt-red);
+            padding: 0 10px;
+            border-left: 1px solid var(--border-line);
+        }
+
+        /* Collapsible Right Drawer (Hidden by default) */
         .control-panel {
             position: absolute;
-            top: 16px; right: 16px; bottom: 54px;
-            width: 380px;
+            top: 16px; right: 16px; bottom: 56px;
+            width: 370px;
             background: var(--bg-white);
             border: 1px solid var(--border-strong);
             border-top: 3px solid var(--ctt-red);
             border-radius: 4px;
-            z-index: 900;
-            display: flex;
+            z-index: 950;
+            display: none;
             flex-direction: column;
         }
-        .panel-head { padding: 14px 18px; border-bottom: 1px solid var(--border-line); }
-        .panel-meta { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
-        .panel-count { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--ctt-navy); }
-        .panel-region { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--ctt-red); }
+        .control-panel.open { display: flex; }
 
-        .filter-bar {
+        .panel-head {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border-line);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-title { font-size: 14px; font-weight: 700; color: var(--ctt-navy); }
+        .btn-close-panel {
+            background: none;
+            border: 1px solid var(--border-strong);
+            border-radius: 4px;
+            width: 26px; height: 26px;
+            font-size: 13px;
+            color: var(--ink-sub);
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .btn-close-panel:hover { background: var(--ctt-red); color: #FFFFFF; border-color: var(--ctt-red); }
+
+        .panel-body { flex: 1; overflow-y: auto; }
+
+        /* Single Vehicle Detail Card */
+        .detail-wrap { padding: 18px; }
+        .detail-header {
+            border-bottom: 1px solid var(--border-line);
+            padding-bottom: 14px;
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .detail-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 3px;
+            grid-template-columns: 1fr;
+            gap: 10px;
             background: var(--bg-subtle);
-            padding: 3px;
             border: 1px solid var(--border-line);
             border-radius: 4px;
+            padding: 14px;
+            font-size: 13px;
         }
-        .filter-btn {
-            background: transparent; border: none; color: var(--ink-sub);
-            font-size: 11px; font-weight: 600; padding: 6px 4px; border-radius: 2px; cursor: pointer;
-        }
-        .filter-btn.active { background: var(--ctt-navy); color: #FFFFFF; }
+        .detail-row { display: flex; justify-content: space-between; gap: 8px; }
+        .detail-key { color: var(--ink-sub); font-size: 12px; }
+        .detail-val { font-weight: 600; color: var(--ink-main); text-align: right; }
 
-        .shipment-list { flex: 1; overflow-y: auto; }
+        .btn-all-list {
+            width: 100%;
+            margin-top: 14px;
+            padding: 8px 12px;
+            background: var(--bg-white);
+            border: 1px solid var(--border-strong);
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--ctt-navy);
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .btn-all-list:hover { background: var(--bg-subtle); border-color: var(--ctt-navy); }
+
+        /* All Shipments List inside Drawer */
         .row-item { padding: 12px 18px; border-bottom: 1px solid var(--border-line); cursor: pointer; }
         .row-item:hover { background: var(--bg-subtle); }
         .row-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
@@ -111,6 +196,7 @@
         .row-sub { padding-left: 16px; font-size: 12px; color: var(--ink-sub); line-height: 1.5; }
         .row-tracking { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--ctt-navy); margin-top: 2px; }
 
+        /* Bottom Bars */
         .legend-bar {
             position: absolute;
             bottom: 16px; left: 16px;
@@ -143,18 +229,13 @@
             color: var(--ctt-navy);
         }
 
-        .pin-hub { width: 11px; height: 11px; background: #FFFFFF; border: 2.5px solid var(--ctt-navy); }
+        .pin-hub { width: 12px; height: 12px; background: #FFFFFF; border: 2.5px solid var(--ctt-navy); cursor: pointer; }
         .pin-truck {
             width: 0; height: 0;
             border-left: 7px solid transparent; border-right: 7px solid transparent;
-            border-bottom: 13px solid var(--ctt-red); filter: drop-shadow(0 0 1.5px #FFFFFF);
+            border-bottom: 14px solid var(--ctt-red); filter: drop-shadow(0 0 1.5px #FFFFFF); cursor: pointer;
         }
-        .pin-done { width: 9px; height: 9px; background: #22C55E; border: 1.5px solid #FFFFFF; }
-        .leaflet-popup-content-wrapper {
-            background: var(--bg-white); color: var(--ink-main);
-            border: 1px solid var(--ctt-navy); border-radius: 4px; box-shadow: none;
-        }
-        .leaflet-popup-tip { background: var(--bg-white); }
+        .pin-done { width: 10px; height: 10px; background: #22C55E; border: 1.5px solid #FFFFFF; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -167,6 +248,7 @@
         </a>
         <div class="topbar-right">
             <span class="sync-label" id="last-sync">อัปเดตล่าสุด: --:--</span>
+            <button class="btn-toggle-list" onclick="openAllList()">รายการทั้งหมด (<span id="top-count">0</span>)</button>
             <a href="/" class="btn-back">กลับหน้าแดชบอร์ด</a>
         </div>
     </header>
@@ -174,9 +256,18 @@
     <div class="viewport">
         <div id="map"></div>
 
+        <!-- Floating Filter Pill -->
+        <div class="floating-filter">
+            <button class="filter-btn active" onclick="setFilter('ALL', this)">ทั้งหมด</button>
+            <button class="filter-btn" onclick="setFilter('กำลังจัดส่ง', this)">กำลังส่ง</button>
+            <button class="filter-btn" onclick="setFilter('รับเข้าคลัง Free Zone', this)">คลัง FZ</button>
+            <button class="filter-btn" onclick="setFilter('จัดส่งสำเร็จ', this)">สำเร็จ</button>
+            <span class="filter-count" id="location-counter">0 คัน/รายการ</span>
+        </div>
+
         <div class="legend-bar">
             <div class="legend-unit"><span class="dot-hub"></span> คลังสินค้า CTT Free Zone</div>
-            <div class="legend-unit"><span class="dot-fleet"></span> กำลังจัดส่ง (CTT Fleet)</div>
+            <div class="legend-unit"><span class="dot-fleet"></span> กำลังจัดส่ง (คลิกที่หมุดเพื่อดูข้อมูลรถ)</div>
             <div class="legend-unit"><span class="dot-done"></span> จัดส่งสำเร็จ</div>
         </div>
 
@@ -185,22 +276,13 @@
             <span>FREEZONE CONTROL TOWER</span>
         </div>
 
-        <aside class="control-panel">
+        <!-- Hidden by default: Opens when clicking a marker or "รายการทั้งหมด" -->
+        <aside class="control-panel" id="drawer-panel">
             <div class="panel-head">
-                <div class="panel-meta">
-                    <span class="panel-count" id="location-counter">0 รายการ</span>
-                    <span class="panel-region">THAILAND NETWORK</span>
-                </div>
-                <div class="filter-bar">
-                    <button class="filter-btn active" onclick="setFilter('ALL', this)">ทั้งหมด</button>
-                    <button class="filter-btn" onclick="setFilter('กำลังจัดส่ง', this)">กำลังส่ง</button>
-                    <button class="filter-btn" onclick="setFilter('รับเข้าคลัง Free Zone', this)">คลัง FZ</button>
-                    <button class="filter-btn" onclick="setFilter('จัดส่งสำเร็จ', this)">สำเร็จ</button>
-                </div>
+                <span class="panel-title" id="drawer-title">รายละเอียดรถขนส่งและสินค้า</span>
+                <button class="btn-close-panel" onclick="closeDrawer()" title="ปิดหน้าต่าง">✕</button>
             </div>
-            <div class="shipment-list" id="location-list">
-                <div style="padding:24px;text-align:center;color:#64748B;font-size:13px;">กำลังโหลดข้อมูลจากฐานข้อมูล...</div>
-            </div>
+            <div class="panel-body" id="drawer-body"></div>
         </aside>
     </div>
 
@@ -214,7 +296,7 @@
             "เชียงราย": [19.9105, 99.8406], "ลำปาง": [18.2888, 99.4909],
             "พิษณุโลก": [16.8211, 100.2659], "นครสวรรค์": [15.7030, 100.1372],
             "ขอนแก่น": [16.4322, 102.8236], "นครราชสีมา": [14.9799, 102.0978],
-            "อุดรธานี": [17.4138, 102.7872], "อุบลราชธานี": [15.2287, 104.8564],
+            "อุดรธานี": [17.4138, 102.7872], "อุบลราชสีมา": [15.2287, 104.8564],
             "ภูเก็ต": [7.8804, 98.3923], "สุราษฎร์ธานี": [9.1382, 99.3217],
             "สงขลา": [7.1898, 100.5954], "หาดใหญ่": [7.0086, 100.4747],
             "นครศรีธรรมราช": [8.4304, 99.9631]
@@ -226,9 +308,11 @@
         let markersLayer = L.layerGroup();
         let routesLayer = L.layerGroup();
 
-        const map = L.map('map', { center: [13.2, 101.6], zoom: 6, zoomControl: false });
+        const map = L.map('map', { center: [13.2, 100.8], zoom: 6, zoomControl: false });
 
-        // ปรับสีประเทศเพื่อนบ้านให้เข้มขึ้น (#CBD5E1 ขอบ #94A3B8) และประเทศไทยสีน้ำเงินกรมท่า CTT (#002B88)
+        // คลิกพื้นที่ว่างบนแผนที่เพื่อปิดแผงด้านขวา
+        map.on('click', () => closeDrawer());
+
         fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json')
             .then(r => r.json())
             .then(geo => {
@@ -257,7 +341,7 @@
             const dest = shipment.destination || '';
             for (const [key, coords] of Object.entries(PROVINCE_COORDS)) {
                 if (dest.includes(key)) {
-                    return [coords[0] + (Math.random() - 0.5) * 0.12, coords[1] + (Math.random() - 0.5) * 0.12];
+                    return [coords[0] + (Math.random() - 0.5) * 0.14, coords[1] + (Math.random() - 0.5) * 0.14];
                 }
             }
             return [14.5 + (Math.random() - 0.5) * 2.2, 101.0 + (Math.random() - 0.5) * 1.8];
@@ -274,93 +358,181 @@
             const now = new Date();
             document.getElementById('last-sync').textContent =
                 `อัปเดตล่าสุด: ${now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`;
-            renderView();
+            renderMarkers();
         }
 
         function setFilter(status, btn) {
             currentFilter = status;
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            renderView();
+            renderMarkers();
+            if (document.getElementById('drawer-panel').classList.contains('open')) {
+                openAllList();
+            }
         }
 
-        function renderView() {
+        function closeDrawer() {
+            document.getElementById('drawer-panel').classList.remove('open');
+        }
+
+        function openSingleDetail(s) {
+            const panel = document.getElementById('drawer-panel');
+            document.getElementById('drawer-title').textContent = 'ข้อมูลรถขนส่งและสินค้า';
+            const isDone = s.status === 'จัดส่งสำเร็จ';
+            const isTransit = s.status === 'กำลังจัดส่ง';
+            const tagClass = isTransit ? 'st-transit' : (isDone ? 'st-done' : 'st-wait');
+
+            document.getElementById('drawer-body').innerHTML = `
+                <div class="detail-wrap">
+                    <div class="detail-header">
+                        <div>
+                            <div style="font-size:11px;color:#64748B;">หมายเลขติดตาม (TRACKING NO.)</div>
+                            <div class="mono" style="font-size:19px;font-weight:700;color:#002B88;">${s.tracking_no}</div>
+                        </div>
+                        <span class="status-tag ${tagClass}">${s.status}</span>
+                    </div>
+
+                    <div class="detail-grid">
+                        <div class="detail-row">
+                            <span class="detail-key">ทะเบียนรถขนส่ง</span>
+                            <span class="detail-val">${s.plate_number || 'ยังไม่ระบุรถ'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-key">พนักงานขับรถ</span>
+                            <span class="detail-val">${s.driver_name || '-'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-key">ประเภทรถ</span>
+                            <span class="detail-val">${s.vehicle_type || '-'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-key">เลขตู้คอนเทนเนอร์</span>
+                            <span class="detail-val mono">${s.container_no || '-'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-key">ประเภทบริการ</span>
+                            <span class="detail-val">${s.service_type || 'Free Zone Warehouse'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-key">เลขที่ใบขนศุลกากร</span>
+                            <span class="detail-val mono">${s.customs_doc_no || '-'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-key">ต้นทาง</span>
+                            <span class="detail-val">${s.sender}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-key">ผู้รับปลายทาง</span>
+                            <span class="detail-val">${s.receiver} (${s.destination})</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-key">อัปเดตล่าสุด</span>
+                            <span class="detail-val" style="font-size:12px;">${new Date(s.updated_at).toLocaleString('th-TH')}</span>
+                        </div>
+                    </div>
+
+                    <button class="btn-all-list" onclick="openAllList()">ดูรายการรถและสินค้าทั้งหมด</button>
+                </div>
+            `;
+            panel.classList.add('open');
+        }
+
+        function openAllList() {
+            const panel = document.getElementById('drawer-panel');
+            const filtered = currentFilter === 'ALL'
+                ? allShipments
+                : allShipments.filter(s => s.status === currentFilter);
+
+            document.getElementById('drawer-title').textContent = `รายการทั้งหมด (${filtered.length})`;
+
+            if (filtered.length === 0) {
+                document.getElementById('drawer-body').innerHTML =
+                    `<div style="padding:24px;text-align:center;color:#64748B;font-size:13px;">ไม่พบรายการในสถานะที่เลือก</div>`;
+            } else {
+                document.getElementById('drawer-body').innerHTML = filtered.map(s => {
+                    const isDone = s.status === 'จัดส่งสำเร็จ';
+                    const isTransit = s.status === 'กำลังจัดส่ง';
+                    const tagClass = isTransit ? 'st-transit' : (isDone ? 'st-done' : 'st-wait');
+                    const dotHtml = isDone
+                        ? `<span class="dot-done"></span>`
+                        : (isTransit ? `<span class="dot-fleet"></span>` : `<span class="dot-hub"></span>`);
+
+                    return `
+                        <div class="row-item" onclick="selectFromList('${s.tracking_no}')">
+                            <div class="row-top">
+                                <div class="row-dest">${dotHtml}<span>${s.destination}</span></div>
+                                <span class="status-tag ${tagClass}">${s.status}</span>
+                            </div>
+                            <div class="row-sub">
+                                รถ: ${s.plate_number || '-'} · ผู้รับ: ${s.receiver}
+                                <div class="row-tracking">${s.tracking_no}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            panel.classList.add('open');
+        }
+
+        function selectFromList(trackingNo) {
+            const item = allShipments.find(s => s.tracking_no === trackingNo);
+            if (!item) return;
+            map.flyTo(item.coords, 8, { duration: 0.8 });
+            openSingleDetail(item);
+        }
+
+        function renderMarkers() {
             markersLayer.clearLayers();
             routesLayer.clearLayers();
 
-            L.marker(BKK_HUB, { icon: L.divIcon({ className: 'pin-hub', iconSize: [11, 11] }) })
-                .bindPopup(`<b>CTT FREEZONE CENTRAL HUB</b><br><span style="color:#475569;font-size:12px;">คลังสินค้าเขตปลอดอากรและศูนย์กระจายสินค้า</span>`)
+            // หมุดคลังสินค้ากลาง CTT Free Zone
+            const hubMarker = L.marker(BKK_HUB, { icon: L.divIcon({ className: 'pin-hub', iconSize: [12, 12] }) })
                 .addTo(markersLayer);
+            hubMarker.on('click', (e) => {
+                L.DomEvent.stopPropagation(e);
+                document.getElementById('drawer-title').textContent = 'สถานีหลัก CTT Free Zone';
+                document.getElementById('drawer-body').innerHTML = `
+                    <div class="detail-wrap">
+                        <div style="font-weight:700;font-size:16px;color:#002B88;margin-bottom:6px;">CTT FREEZONE CENTRAL HUB</div>
+                        <p style="font-size:13px;color:#475569;margin-bottom:14px;">คลังสินค้าเขตปลอดอากร ด่านตรวจปล่อยพิธีการศุลกากร และศูนย์กระจายสินค้าหลัก</p>
+                        <button class="btn-all-list" onclick="openAllList()">ดูรายการสินค้าที่ออกจากคลังนี้</button>
+                    </div>
+                `;
+                document.getElementById('drawer-panel').classList.add('open');
+            });
 
             const filtered = currentFilter === 'ALL'
                 ? allShipments
                 : allShipments.filter(s => s.status === currentFilter);
 
-            document.getElementById('location-counter').textContent = `${filtered.length} รายการ`;
+            document.getElementById('location-counter').textContent = `${filtered.length} คัน/รายการ`;
+            document.getElementById('top-count').textContent = filtered.length;
 
-            const listEl = document.getElementById('location-list');
-            if (filtered.length === 0) {
-                listEl.innerHTML = `<div style="padding:24px;text-align:center;color:#64748B;font-size:13px;">ไม่พบรายการในสถานะที่เลือก</div>`;
-                return;
-            }
-
-            listEl.innerHTML = filtered.map(s => {
+            filtered.forEach(s => {
                 const isDone = s.status === 'จัดส่งสำเร็จ';
                 const isTransit = s.status === 'กำลังจัดส่ง';
-                const tagClass = isTransit ? 'st-transit' : (isDone ? 'st-done' : 'st-wait');
-                const receiverName = s.receiver_name || s.receiver || '-';
-                const plate = s.plate_number || 'ยังไม่ระบุรถ';
 
-                const lineColor = isTransit ? '#FF3B47' : (isDone ? '#4ADE80' : '#93C5FD');
+                const lineColor = isTransit ? '#E10600' : (isDone ? '#4ADE80' : '#93C5FD');
                 L.polyline([BKK_HUB, s.coords], {
                     color: lineColor,
                     weight: isTransit ? 2 : 1.2,
-                    opacity: isTransit ? 0.95 : 0.7,
+                    opacity: isTransit ? 0.95 : 0.65,
                     dashArray: isTransit ? '6, 5' : '2, 5'
                 }).addTo(routesLayer);
 
                 const pinClass = isDone ? 'pin-done' : (isTransit ? 'pin-truck' : 'pin-hub');
-                const pinSize = isDone ? [9, 9] : (isTransit ? [14, 14] : [11, 11]);
+                const pinSize = isDone ? [10, 10] : (isTransit ? [14, 14] : [12, 12]);
 
                 const marker = L.marker(s.coords, {
                     icon: L.divIcon({ className: pinClass, iconSize: pinSize })
                 }).addTo(markersLayer);
 
-                marker.bindPopup(`
-                    <div style="min-width:195px;font-family:'IBM Plex Sans Thai',sans-serif;">
-                        <div style="font-family:'JetBrains Mono',monospace;color:#E10600;font-weight:700;font-size:12px;">${s.tracking_no}</div>
-                        <div style="font-weight:600;margin:3px 0;color:#0F172A;">ปลายทาง: ${s.destination}</div>
-                        <div style="font-size:12px;color:#334155;">ผู้รับ: ${receiverName}</div>
-                        <div style="font-size:12px;color:#64748B;">รถขนส่ง: ${plate}</div>
-                        <div style="margin-top:5px;font-size:11px;font-weight:700;color:#002B88;">สถานะ: ${s.status}</div>
-                    </div>
-                `);
-
-                const dotHtml = isDone
-                    ? `<span class="dot-done"></span>`
-                    : (isTransit ? `<span class="dot-fleet"></span>` : `<span class="dot-hub"></span>`);
-
-                return `
-                    <div class="row-item" onclick="focusItem(${s.coords[0]}, ${s.coords[1]}, '${s.tracking_no}')">
-                        <div class="row-top">
-                            <div class="row-dest">${dotHtml}<span>${s.destination}</span></div>
-                            <span class="status-tag ${tagClass}">${s.status}</span>
-                        </div>
-                        <div class="row-sub">
-                            ผู้รับ: ${receiverName} · รถ: ${plate}
-                            <div class="row-tracking">${s.tracking_no}</div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function focusItem(lat, lng, trackingNo) {
-            map.flyTo([lat, lng], 8, { duration: 0.9 });
-            markersLayer.eachLayer(layer => {
-                if (layer.getPopup && layer.getPopup().getContent().includes(trackingNo)) {
-                    setTimeout(() => layer.openPopup(), 950);
-                }
+                // คลิกที่หมุดรถบนแผนที่ -> เปิดแผงด้านขวาแสดงข้อมูลคันนั้นทันที
+                marker.on('click', (e) => {
+                    L.DomEvent.stopPropagation(e);
+                    map.flyTo(s.coords, 8, { duration: 0.7 });
+                    openSingleDetail(s);
+                });
             });
         }
 
