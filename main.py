@@ -406,6 +406,11 @@ def serve_ui():
 async def public_tracking_page():
     return FileResponse("track.html")
 
+
+@app.get("/logo.png")
+def serve_logo():
+    return FileResponse("CTT-Log-scaled.png", media_type="image/png")
+
 @app.get("/live-map")
 async def live_command_center():
     return FileResponse("live_map.html")

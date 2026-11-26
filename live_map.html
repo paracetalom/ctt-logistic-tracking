@@ -3,384 +3,368 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CTT Logistics Operations — แผนที่ติดตามการเดินรถ</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Geist+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>CTT Freezone & Logistics — ศูนย์ควบคุมโครงข่ายและติดตามการเดินรถ</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body { font-family: 'IBM Plex Sans Thai', sans-serif; background-color: #121110; color: #F5F5F4; overflow-x: hidden; }
-        .mono { font-family: 'Geist Mono', monospace; font-variant-numeric: tabular-nums; }
-        .map-grid {
-            background-image: 
-                linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-            background-size: 32px 32px;
+        :root {
+            --bg-white: #FFFFFF;
+            --bg-subtle: #F8FAFC;
+            --border-line: #E2E8F0;
+            --border-strong: #CBD5E1;
+            --ctt-navy: #002B88;
+            --ctt-red: #E10600;
+            --ctt-blue: #1D4ED8;
+            --ctt-green: #15803D;
+            --ink-main: #0F172A;
+            --ink-sub: #475569;
         }
-        .province-node { cursor: pointer; }
-        .province-node:hover circle { stroke: #F5F5F4; stroke-width: 2px; }
-        #map-viewport { cursor: grab; touch-action: none; user-select: none; }
-        #map-viewport:active { cursor: grabbing; }
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-thumb { background: #2C2A26; border-radius: 4px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: var(--bg-white);
+            color: var(--ink-main);
+            font-family: 'IBM Plex Sans Thai', sans-serif;
+            height: 100dvh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .topbar {
+            height: 58px;
+            background: var(--bg-white);
+            border-bottom: 2px solid var(--ctt-navy);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 1000;
+        }
+        .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+        .divider-v { width: 1px; height: 22px; background: var(--border-strong); }
+        .page-title { font-size: 14px; font-weight: 700; color: var(--ctt-navy); }
+        .topbar-right { display: flex; align-items: center; gap: 14px; }
+        .sync-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-sub); }
+        .btn-back {
+            background: var(--ctt-navy);
+            color: #FFFFFF;
+            padding: 7px 14px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .btn-back:hover { background: var(--ctt-red); }
+
+        .viewport { position: relative; flex: 1; width: 100%; background: var(--bg-white); }
+        #map { width: 100%; height: 100%; background: var(--bg-white) !important; }
+        .leaflet-control-attribution { display: none; }
+
+        .control-panel {
+            position: absolute;
+            top: 16px; right: 16px; bottom: 54px;
+            width: 380px;
+            background: var(--bg-white);
+            border: 1px solid var(--border-strong);
+            border-top: 3px solid var(--ctt-red);
+            border-radius: 4px;
+            z-index: 900;
+            display: flex;
+            flex-direction: column;
+        }
+        .panel-head { padding: 14px 18px; border-bottom: 1px solid var(--border-line); }
+        .panel-meta { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+        .panel-count { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--ctt-navy); }
+        .panel-region { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--ctt-red); }
+
+        .filter-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 3px;
+            background: var(--bg-subtle);
+            padding: 3px;
+            border: 1px solid var(--border-line);
+            border-radius: 4px;
+        }
+        .filter-btn {
+            background: transparent; border: none; color: var(--ink-sub);
+            font-size: 11px; font-weight: 600; padding: 6px 4px; border-radius: 2px; cursor: pointer;
+        }
+        .filter-btn.active { background: var(--ctt-navy); color: #FFFFFF; }
+
+        .shipment-list { flex: 1; overflow-y: auto; }
+        .row-item { padding: 12px 18px; border-bottom: 1px solid var(--border-line); cursor: pointer; }
+        .row-item:hover { background: var(--bg-subtle); }
+        .row-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+        .row-dest { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+        .dot-hub { width: 8px; height: 8px; background: var(--ctt-navy); display: inline-block; }
+        .dot-fleet {
+            width: 0; height: 0;
+            border-left: 5px solid transparent; border-right: 5px solid transparent;
+            border-bottom: 9px solid var(--ctt-red); display: inline-block;
+        }
+        .dot-done { width: 8px; height: 8px; background: var(--ctt-green); display: inline-block; }
+        .status-tag { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 2px; }
+        .st-transit { background: #FEF2F2; color: var(--ctt-red); border: 1px solid #FECACA; }
+        .st-done { background: #F0FDF4; color: var(--ctt-green); border: 1px solid #BBF7D0; }
+        .st-wait { background: #EFF6FF; color: var(--ctt-blue); border: 1px solid #BFDBFE; }
+        .row-sub { padding-left: 16px; font-size: 12px; color: var(--ink-sub); line-height: 1.5; }
+        .row-tracking { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--ctt-navy); margin-top: 2px; }
+
+        .legend-bar {
+            position: absolute;
+            bottom: 16px; left: 16px;
+            background: var(--bg-white);
+            border: 1px solid var(--border-strong);
+            border-radius: 4px;
+            padding: 8px 14px;
+            z-index: 900;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .legend-unit { display: flex; align-items: center; gap: 6px; }
+
+        .corner-brand {
+            position: absolute;
+            bottom: 16px; right: 16px;
+            background: var(--bg-white);
+            border: 1px solid var(--border-strong);
+            border-radius: 4px;
+            padding: 5px 12px;
+            z-index: 900;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ctt-navy);
+        }
+
+        .pin-hub { width: 11px; height: 11px; background: #FFFFFF; border: 2.5px solid var(--ctt-navy); }
+        .pin-truck {
+            width: 0; height: 0;
+            border-left: 7px solid transparent; border-right: 7px solid transparent;
+            border-bottom: 13px solid var(--ctt-red); filter: drop-shadow(0 0 1.5px #FFFFFF);
+        }
+        .pin-done { width: 9px; height: 9px; background: #22C55E; border: 1.5px solid #FFFFFF; }
+        .leaflet-popup-content-wrapper {
+            background: var(--bg-white); color: var(--ink-main);
+            border: 1px solid var(--ctt-navy); border-radius: 4px; box-shadow: none;
+        }
+        .leaflet-popup-tip { background: var(--bg-white); }
     </style>
 </head>
-<body class="min-h-screen flex flex-col">
-    <!-- Top Header -->
-    <header class="border-b border-[#2C2A26] bg-[#181715] px-5 py-3 flex flex-wrap justify-between items-center gap-4">
-        <div class="flex items-center gap-3">
-            <div class="bg-[#D97706] text-white font-bold px-2.5 py-1 rounded-md text-sm tracking-wider mono">CTT</div>
-            <div class="h-4 w-px bg-[#2C2A26]"></div>
-            <div>
-                <div class="flex items-center gap-2">
-                    <h1 class="text-sm font-semibold text-[#F5F5F4]">ระบบติดตามเส้นทางขนส่งและกระจายสินค้า</h1>
-                    <span class="inline-flex items-center gap-1.5 text-[11px] bg-[#24221F] text-[#D6D3D1] border border-[#3A3732] px-2 py-0.5 rounded-md">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> เชื่อมต่อฐานข้อมูล
-                    </span>
-                </div>
-                <p class="text-xs text-[#A8A29E]">คลิกค้างเพื่อลากเลื่อน • หมุนล้อเมาส์เพื่อซูมเข้า-ออก • คลิกชื่อจังหวัดเพื่อดูรายการพัสดุ</p>
-            </div>
-        </div>
+<body>
 
-        <div class="flex items-center gap-3">
-            <div class="text-right hidden md:block mr-2">
-                <p class="text-[10px] text-[#A8A29E]">เวลาปัจจุบัน (ICT)</p>
-                <p id="clock" class="text-xs font-semibold text-[#F5F5F4] mono">--:--:--</p>
-            </div>
-            <button onclick="document.documentElement.requestFullscreen()" class="bg-[#24221F] hover:bg-[#2F2D29] border border-[#3A3732] text-[#F5F5F4] text-xs px-3 py-1.5 rounded-lg transition">
-                ขยายเต็มจอ
-            </button>
-            <a href="/" class="bg-[#24221F] hover:bg-[#2F2D29] border border-[#3A3732] text-[#F5F5F4] text-xs px-3.5 py-1.5 rounded-lg transition">
-                ← กลับหน้าจัดการหลัก
-            </a>
+    <header class="topbar">
+        <a href="/" class="brand">
+            <img src="/logo.png" alt="CTT Logistics" style="height:34px;width:auto;display:block;object-fit:contain;">
+            <div class="divider-v"></div>
+            <span class="page-title">ศูนย์ควบคุมโครงข่ายคลังสินค้าปลอดอากรและการเดินรถ</span>
+        </a>
+        <div class="topbar-right">
+            <span class="sync-label" id="last-sync">อัปเดตล่าสุด: --:--</span>
+            <a href="/" class="btn-back">กลับหน้าแดชบอร์ด</a>
         </div>
     </header>
 
-    <!-- Main Workspace -->
-    <main class="flex-grow p-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
-        <!-- Left GIS Map Canvas (9 Cols) -->
-        <div id="map-viewport" tabindex="0" aria-label="แผนที่เส้นทางขนส่งประเทศไทย" class="lg:col-span-9 relative rounded-xl border border-[#2C2A26] bg-[#161513] map-grid overflow-hidden flex flex-col justify-between min-h-[600px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706]">
-            <!-- Map Top Controls -->
-            <div class="p-4 flex justify-between items-start z-10 pointer-events-none">
-                <div class="bg-[#1A1917] border border-[#2C2A26] px-3.5 py-2 rounded-lg text-xs">
-                    <p class="font-semibold text-[#F5F5F4]">โครงข่ายขนส่งทางบกภายในประเทศ</p>
-                    <p class="text-[#A8A29E] text-[11px] mt-0.5">ศูนย์คัดแยกหลัก: นครปฐม (13.82°N, 100.06°E)</p>
-                </div>
+    <div class="viewport">
+        <div id="map"></div>
 
-                <div class="flex flex-col items-end gap-2">
-                    <div class="bg-[#1A1917] border border-[#2C2A26] px-3.5 py-2 rounded-lg text-[11px] space-y-1">
-                        <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-[#D97706] inline-block"></span> อยู่ระหว่างจัดส่ง</div>
-                        <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> จัดส่งสำเร็จ</div>
-                        <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-sky-500 inline-block"></span> รับเข้าระบบ</div>
-                    </div>
-                    <!-- Map Controls -->
-                    <div class="bg-[#1A1917] border border-[#2C2A26] rounded-lg p-1 flex gap-1 pointer-events-auto">
-                        <button onclick="zoomBy(1.3)" title="ซูมเข้า (+)" class="w-7 h-7 rounded bg-[#24221F] hover:bg-[#3A3732] text-[#F5F5F4] font-semibold text-sm transition">+</button>
-                        <button onclick="zoomBy(0.75)" title="ซูมออก (-)" class="w-7 h-7 rounded bg-[#24221F] hover:bg-[#3A3732] text-[#F5F5F4] font-semibold text-sm transition">−</button>
-                        <button id="btn-pause" onclick="toggleAnimation()" aria-pressed="false" class="px-2.5 h-7 rounded bg-[#24221F] hover:bg-[#3A3732] text-[#F5F5F4] text-[11px] font-medium transition mono">PAUSE</button>
-                        <button onclick="resetView()" title="รีเซ็ตมุมมอง (0)" class="px-2.5 h-7 rounded bg-[#24221F] hover:bg-[#D97706] hover:text-white text-[#F5F5F4] text-[11px] font-medium transition mono">RESET</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Province Detail Drawer -->
-            <div id="province-modal" class="hidden absolute top-24 left-4 z-20 bg-[#1A1917] border border-[#3A3732] p-4 rounded-xl w-72 shadow-lg">
-                <div class="flex justify-between items-center border-b border-[#2C2A26] pb-2 mb-2.5">
-                    <h3 id="modal-title" class="text-xs font-semibold text-[#F5F5F4]">จังหวัด</h3>
-                    <button onclick="document.getElementById('province-modal').classList.add('hidden')" class="text-[#A8A29E] hover:text-white text-xs px-1.5">✕</button>
-                </div>
-                <div id="modal-body" class="space-y-1.5 max-h-52 overflow-y-auto text-xs"></div>
-            </div>
-
-            <!-- Vector Thailand Map -->
-            <div class="absolute inset-0 flex items-center justify-center">
-                <svg id="thailand-svg" viewBox="0 0 500 720" class="w-full h-full">
-                    <g id="pan-zoom-group">
-                        <path d="M305.5,397.7 L259.6,377.7 L215.8,378.5 L223.3,344.1 L178.3,344.4 L174.2,392.5 L146.6,456.3 L130.0,494.9 L133.5,526.6 L166.8,527.9 L187.6,567.8 L196.8,605.7 L225.3,630.7 L256.3,635.8 L282.8,658.5 L266.1,676.4 L232.3,681.6 L228.3,659.2 L186.5,640.0 L177.6,647.8 L157.4,631.1 L148.7,609.4 L121.5,584.7 L96.7,564.0 L88.3,589.7 L78.6,565.4 L84.2,538.2 L99.3,496.2 L124.0,451.3 L152.1,410.6 L132.1,370.7 L132.9,350.4 L127.1,326.0 L93.0,291.3 L80.8,269.4 L98.4,261.3 L117.1,223.3 L96.2,194.4 L63.7,162.5 L39.0,124.2 L60.6,116.2 L83.9,69.0 L120.0,67.0 L149.9,48.1 L179.2,38.0 L201.3,51.5 L204.3,77.7 L238.8,79.7 L226.3,125.8 L227.5,165.0 L281.4,138.9 L296.7,146.6 L326.7,145.3 L337.0,130.1 L375.7,133.1 L414.6,168.6 L417.8,211.7 L459.2,249.8 L456.9,286.8 L440.3,306.5 L392.3,300.3 L326.2,308.6 L293.4,345.0 L305.5,397.7 Z" fill="#22201D" stroke="#44403C" stroke-width="1.3" />
-                        <g id="routes-layer"></g>
-                        <g id="nodes-layer"></g>
-
-                        <!-- Central Hub Marker -->
-                        <circle cx="176.4" cy="326.3" r="5.5" fill="#F5F5F4" stroke="#D97706" stroke-width="2.5" />
-                        <rect x="114.4" y="306.3" width="54" height="15" rx="4" fill="#121110" stroke="#44403C" stroke-width="0.8" />
-                        <text x="119.4" y="317.3" fill="#F5F5F4" font-size="9.5" font-weight="600" class="mono">CTT HUB</text>
-
-                        <!-- Moving Fleet Layer -->
-                        <g id="trucks-layer"></g>
-                    </g>
-                </svg>
-            </div>
-
-            <!-- Bottom Unified Metrics Strip -->
-            <div class="p-4 z-10 pointer-events-none">
-                <div class="bg-[#1A1917] border border-[#2C2A26] rounded-xl grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[#2C2A26]">
-                    <div class="p-3">
-                        <p class="text-[11px] text-[#A8A29E]">พัสดุทั้งหมดในระบบ</p>
-                        <p id="kpi-total" class="text-xl font-bold text-[#F5F5F4] mt-0.5 mono">0</p>
-                    </div>
-                    <div class="p-3">
-                        <p class="text-[11px] text-[#A8A29E]">อยู่ระหว่างจัดส่ง</p>
-                        <p id="kpi-transit" class="text-xl font-bold text-[#D97706] mt-0.5 mono">0</p>
-                    </div>
-                    <div class="p-3">
-                        <p class="text-[11px] text-[#A8A29E]">จัดส่งสำเร็จ</p>
-                        <p id="kpi-done" class="text-xl font-bold text-emerald-500 mt-0.5 mono">0</p>
-                    </div>
-                    <div class="p-3">
-                        <p class="text-[11px] text-[#A8A29E]">ระดับการซูมแผนที่</p>
-                        <p id="kpi-zoom" class="text-xl font-bold text-[#D6D3D1] mt-0.5 mono">100%</p>
-                    </div>
-                </div>
-            </div>
+        <div class="legend-bar">
+            <div class="legend-unit"><span class="dot-hub"></span> คลังสินค้า CTT Free Zone</div>
+            <div class="legend-unit"><span class="dot-fleet"></span> กำลังจัดส่ง (CTT Fleet)</div>
+            <div class="legend-unit"><span class="dot-done"></span> จัดส่งสำเร็จ</div>
         </div>
 
-        <!-- Right Shipment List Panel (3 Cols) -->
-        <aside class="lg:col-span-3 bg-[#1A1917] border border-[#2C2A26] rounded-xl p-4 flex flex-col justify-between h-[650px]">
-            <div>
-                <div class="flex justify-between items-center border-b border-[#2C2A26] pb-3 mb-3">
-                    <h2 class="text-xs font-semibold text-[#F5F5F4]">รายการสถานะการขนส่งล่าสุด</h2>
-                    <span class="text-[10px] text-[#A8A29E]">อัปเดตล่าสุด</span>
-                </div>
-                <div id="fleet-list" class="space-y-2 overflow-y-auto max-h-[530px] pr-1"></div>
-            </div>
+        <div class="corner-brand">
+            <img src="/logo.png" alt="CTT Logistics" style="height:20px;width:auto;display:block;">
+            <span>FREEZONE CONTROL TOWER</span>
+        </div>
 
-            <div class="border-t border-[#2C2A26] pt-3 mt-2 text-[11px] text-[#A8A29E] flex justify-between">
-                <span>ศูนย์กระจายสินค้า: นครปฐม</span>
-                <span>MySQL 8.0</span>
+        <aside class="control-panel">
+            <div class="panel-head">
+                <div class="panel-meta">
+                    <span class="panel-count" id="location-counter">0 รายการ</span>
+                    <span class="panel-region">THAILAND NETWORK</span>
+                </div>
+                <div class="filter-bar">
+                    <button class="filter-btn active" onclick="setFilter('ALL', this)">ทั้งหมด</button>
+                    <button class="filter-btn" onclick="setFilter('กำลังจัดส่ง', this)">กำลังส่ง</button>
+                    <button class="filter-btn" onclick="setFilter('รับเข้าคลัง Free Zone', this)">คลัง FZ</button>
+                    <button class="filter-btn" onclick="setFilter('จัดส่งสำเร็จ', this)">สำเร็จ</button>
+                </div>
+            </div>
+            <div class="shipment-list" id="location-list">
+                <div style="padding:24px;text-align:center;color:#64748B;font-size:13px;">กำลังโหลดข้อมูลจากฐานข้อมูล...</div>
             </div>
         </aside>
-    </main>
+    </div>
 
     <script>
-        function updateClock() {
-            document.getElementById('clock').innerText = new Date().toLocaleTimeString('th-TH');
-        }
-        updateClock();
-        setInterval(updateClock, 1000);
-
-        let scale = 1, panX = 0, panY = 0, isDragging = false, startX = 0, startY = 0;
-        const viewport = document.getElementById('map-viewport');
-        const pzGroup = document.getElementById('pan-zoom-group');
-
-        function applyTransform() {
-            pzGroup.setAttribute('transform', `translate(${panX}, ${panY}) scale(${scale})`);
-            document.getElementById('kpi-zoom').innerText = Math.round(scale * 100) + '%';
-        }
-
-        function zoomBy(factor, centerX = 250, centerY = 360) {
-            const newScale = Math.min(Math.max(scale * factor, 0.7), 6);
-            const ratio = newScale / scale;
-            panX = centerX - (centerX - panX) * ratio;
-            panY = centerY - (centerY - panY) * ratio;
-            scale = newScale;
-            applyTransform();
-        }
-
-        function resetView() { scale = 1; panX = 0; panY = 0; applyTransform(); }
-
-        viewport.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            const svg = document.getElementById('thailand-svg');
-            const pt = svg.createSVGPoint();
-            pt.x = e.clientX; pt.y = e.clientY;
-            const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
-            zoomBy(e.deltaY < 0 ? 1.18 : 0.85, svgP.x, svgP.y);
-        }, { passive: false });
-
-        viewport.addEventListener('mousedown', (e) => {
-            if (e.target.closest('button') || e.target.closest('#province-modal')) return;
-            isDragging = true; startX = e.clientX - panX; startY = e.clientY - panY;
-        });
-        window.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            panX = e.clientX - startX; panY = e.clientY - startY; applyTransform();
-        });
-        window.addEventListener('mouseup', () => { isDragging = false; });
-
-        viewport.addEventListener('keydown', (e) => {
-            if (e.key === '+' || e.key === '=') zoomBy(1.2);
-            if (e.key === '-') zoomBy(0.8);
-            if (e.key === '0') resetView();
-            if (e.key === ' ') { e.preventDefault(); toggleAnimation(); }
-        });
-
-        const HUB = { x: 176.4, y: 326.3 };
-        const HIGHWAYS = {
-            "นครปฐม": { pts: [{x: 176.4, y: 326.3}], ox: -58, oy: 14 },
-            "กรุงเทพฯ": { pts: [{x: 176.4, y: 326.3}, {x: 198.9, y: 329.1}], ox: 10, oy: -8 },
-            "ชลบุรี": { pts: [{x: 176.4, y: 326.3}, {x: 201.4, y: 331.6}, {x: 223.6, y: 346.4}], ox: 10, oy: 12 },
-            "นครราชสีมา": { pts: [{x: 176.4, y: 326.3}, {x: 219.8, y: 295.3}, {x: 245.4, y: 287.9}, {x: 280.6, y: 275.6}], ox: 10, oy: 4 },
-            "ขอนแก่น": { pts: [{x: 176.4, y: 326.3}, {x: 219.8, y: 295.3}, {x: 280.6, y: 275.6}, {x: 317.7, y: 212.2}], ox: 10, oy: 4 },
-            "เชียงใหม่": { pts: [{x: 176.4, y: 326.3}, {x: 179.4, y: 244.2}, {x: 128.2, y: 192.6}, {x: 147.2, y: 131.4}, {x: 121.3, y: 109.2}], ox: 10, oy: 4 },
-            "ภูเก็ต": { pts: [{x: 176.4, y: 326.3}, {x: 170.7, y: 357.4}, {x: 162.5, y: 414.2}, {x: 131.3, y: 471.9}, {x: 139.0, y: 531.3}, {x: 91.0, y: 586.0}], ox: -48, oy: 4 },
-            "สงขลา": { pts: [{x: 176.4, y: 326.3}, {x: 170.7, y: 357.4}, {x: 162.5, y: 414.2}, {x: 131.3, y: 471.9}, {x: 139.0, y: 531.3}, {x: 171.2, y: 561.9}, {x: 177.3, y: 597.3}, {x: 203.7, y: 616.1}], ox: 10, oy: 6 },
+        const PROVINCE_COORDS = {
+            "กรุงเทพมหานคร": [13.7563, 100.5018], "กรุงเทพฯ": [13.7563, 100.5018],
+            "นครปฐม": [13.8196, 100.0622], "นนทบุรี": [13.8591, 100.5217],
+            "ปทุมธานี": [14.0208, 100.5250], "สมุทรปราการ": [13.5991, 100.5998],
+            "ชลบุรี": [13.3611, 100.9847], "ระยอง": [12.6814, 101.2816],
+            "พระนครศรีอยุธยา": [14.3532, 100.5689], "เชียงใหม่": [18.7883, 98.9853],
+            "เชียงราย": [19.9105, 99.8406], "ลำปาง": [18.2888, 99.4909],
+            "พิษณุโลก": [16.8211, 100.2659], "นครสวรรค์": [15.7030, 100.1372],
+            "ขอนแก่น": [16.4322, 102.8236], "นครราชสีมา": [14.9799, 102.0978],
+            "อุดรธานี": [17.4138, 102.7872], "อุบลราชธานี": [15.2287, 104.8564],
+            "ภูเก็ต": [7.8804, 98.3923], "สุราษฎร์ธานี": [9.1382, 99.3217],
+            "สงขลา": [7.1898, 100.5954], "หาดใหญ่": [7.0086, 100.4747],
+            "นครศรีธรรมราช": [8.4304, 99.9631]
         };
-        let allShipments = [], activeTrucks = [];
 
-        function showProvinceDetail(provName) {
-            const list = allShipments.filter(s => s.destination === provName);
-            document.getElementById('modal-title').innerText = `${provName} (${list.length} รายการ)`;
-            document.getElementById('modal-body').innerHTML = list.map(s => `
-                <div class="bg-[#22201D] p-2.5 rounded-lg border border-[#2C2A26] flex justify-between items-center">
-                    <div>
-                        <p class="mono font-semibold text-[#F5F5F4]">${s.tracking_no}</p>
-                        <p class="text-[11px] text-[#A8A29E]">ผู้รับ: ${s.receiver}</p>
-                    </div>
-                    <span class="text-[10px] px-2 py-0.5 rounded bg-[#181715] border border-[#3A3732] text-[#D6D3D1]">${s.status}</span>
-                </div>
-            `).join('') || '<p class="text-[#A8A29E]">ไม่มีรายการ</p>';
-            document.getElementById('province-modal').classList.remove('hidden');
-        }
+        const BKK_HUB = [13.7563, 100.5018];
+        let allShipments = [];
+        let currentFilter = 'ALL';
+        let markersLayer = L.layerGroup();
+        let routesLayer = L.layerGroup();
 
-        function getPointAlongPath(points, t) {
-            if (points.length <= 1) return points[0];
-            let segLengths = [], totalLen = 0;
-            for (let i = 0; i < points.length - 1; i++) {
-                const d = Math.hypot(points[i+1].x - points[i].x, points[i+1].y - points[i].y);
-                segLengths.push(d); totalLen += d;
+        const map = L.map('map', { center: [13.2, 101.6], zoom: 6, zoomControl: false });
+
+        // ปรับสีประเทศเพื่อนบ้านให้เข้มขึ้น (#CBD5E1 ขอบ #94A3B8) และประเทศไทยสีน้ำเงินกรมท่า CTT (#002B88)
+        fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json')
+            .then(r => r.json())
+            .then(geo => {
+                L.geoJSON(geo, {
+                    style: feature => {
+                        const isTH = feature.id === 'THA';
+                        return {
+                            color: isTH ? '#002B88' : '#94A3B8',
+                            weight: isTH ? 1.8 : 1,
+                            fillColor: isTH ? '#002B88' : '#CBD5E1',
+                            fillOpacity: isTH ? 1 : 0.85
+                        };
+                    }
+                }).addTo(map);
+                routesLayer.bringToFront();
+                markersLayer.bringToFront();
+            });
+
+        routesLayer.addTo(map);
+        markersLayer.addTo(map);
+
+        function resolveCoords(shipment) {
+            if (shipment.current_lat && shipment.current_lng) {
+                return [parseFloat(shipment.current_lat), parseFloat(shipment.current_lng)];
             }
-            let targetDist = t * totalLen;
-            for (let i = 0; i < segLengths.length; i++) {
-                if (targetDist <= segLengths[i] || i === segLengths.length - 1) {
-                    const localT = segLengths[i] === 0 ? 0 : targetDist / segLengths[i];
-                    return {
-                        x: points[i].x + (points[i+1].x - points[i].x) * localT,
-                        y: points[i].y + (points[i+1].y - points[i].y) * localT
-                    };
+            const dest = shipment.destination || '';
+            for (const [key, coords] of Object.entries(PROVINCE_COORDS)) {
+                if (dest.includes(key)) {
+                    return [coords[0] + (Math.random() - 0.5) * 0.12, coords[1] + (Math.random() - 0.5) * 0.12];
                 }
-                targetDist -= segLengths[i];
             }
-            return points[points.length - 1];
+            return [14.5 + (Math.random() - 0.5) * 2.2, 101.0 + (Math.random() - 0.5) * 1.8];
         }
 
-        async function initCommandCenter() {
-            const res = await fetch('/api/shipments');
-            allShipments = await res.json();
+        async function loadShipments() {
+            const token = sessionStorage.getItem('ctt_token') || '';
+            const res = await fetch('/api/shipments', {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+            const data = await res.json();
+            const list = Array.isArray(data) ? data : (data.shipments || []);
+            allShipments = list.map(s => ({ ...s, coords: resolveCoords(s) }));
+            const now = new Date();
+            document.getElementById('last-sync').textContent =
+                `อัปเดตล่าสุด: ${now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`;
+            renderView();
+        }
 
-            document.getElementById('kpi-total').innerText = allShipments.length;
-            const transit = allShipments.filter(s => s.status === 'กำลังจัดส่ง');
-            const done = allShipments.filter(s => s.status === 'จัดส่งสำเร็จ');
-            document.getElementById('kpi-transit').innerText = transit.length;
-            document.getElementById('kpi-done').innerText = done.length;
+        function setFilter(status, btn) {
+            currentFilter = status;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderView();
+        }
 
-            const feed = document.getElementById('fleet-list');
-            feed.innerHTML = allShipments.slice(0, 20).map(s => {
-                const isMoving = s.status === 'กำลังจัดส่ง';
-                const badgeClass = isMoving ? 'text-amber-400 border-amber-500/30 bg-amber-950/40' :
-                                   s.status === 'จัดส่งสำเร็จ' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-950/40' :
-                                   'text-sky-400 border-sky-500/30 bg-sky-950/40';
+        function renderView() {
+            markersLayer.clearLayers();
+            routesLayer.clearLayers();
+
+            L.marker(BKK_HUB, { icon: L.divIcon({ className: 'pin-hub', iconSize: [11, 11] }) })
+                .bindPopup(`<b>CTT FREEZONE CENTRAL HUB</b><br><span style="color:#475569;font-size:12px;">คลังสินค้าเขตปลอดอากรและศูนย์กระจายสินค้า</span>`)
+                .addTo(markersLayer);
+
+            const filtered = currentFilter === 'ALL'
+                ? allShipments
+                : allShipments.filter(s => s.status === currentFilter);
+
+            document.getElementById('location-counter').textContent = `${filtered.length} รายการ`;
+
+            const listEl = document.getElementById('location-list');
+            if (filtered.length === 0) {
+                listEl.innerHTML = `<div style="padding:24px;text-align:center;color:#64748B;font-size:13px;">ไม่พบรายการในสถานะที่เลือก</div>`;
+                return;
+            }
+
+            listEl.innerHTML = filtered.map(s => {
+                const isDone = s.status === 'จัดส่งสำเร็จ';
+                const isTransit = s.status === 'กำลังจัดส่ง';
+                const tagClass = isTransit ? 'st-transit' : (isDone ? 'st-done' : 'st-wait');
+                const receiverName = s.receiver_name || s.receiver || '-';
+                const plate = s.plate_number || 'ยังไม่ระบุรถ';
+
+                const lineColor = isTransit ? '#FF3B47' : (isDone ? '#4ADE80' : '#93C5FD');
+                L.polyline([BKK_HUB, s.coords], {
+                    color: lineColor,
+                    weight: isTransit ? 2 : 1.2,
+                    opacity: isTransit ? 0.95 : 0.7,
+                    dashArray: isTransit ? '6, 5' : '2, 5'
+                }).addTo(routesLayer);
+
+                const pinClass = isDone ? 'pin-done' : (isTransit ? 'pin-truck' : 'pin-hub');
+                const pinSize = isDone ? [9, 9] : (isTransit ? [14, 14] : [11, 11]);
+
+                const marker = L.marker(s.coords, {
+                    icon: L.divIcon({ className: pinClass, iconSize: pinSize })
+                }).addTo(markersLayer);
+
+                marker.bindPopup(`
+                    <div style="min-width:195px;font-family:'IBM Plex Sans Thai',sans-serif;">
+                        <div style="font-family:'JetBrains Mono',monospace;color:#E10600;font-weight:700;font-size:12px;">${s.tracking_no}</div>
+                        <div style="font-weight:600;margin:3px 0;color:#0F172A;">ปลายทาง: ${s.destination}</div>
+                        <div style="font-size:12px;color:#334155;">ผู้รับ: ${receiverName}</div>
+                        <div style="font-size:12px;color:#64748B;">รถขนส่ง: ${plate}</div>
+                        <div style="margin-top:5px;font-size:11px;font-weight:700;color:#002B88;">สถานะ: ${s.status}</div>
+                    </div>
+                `);
+
+                const dotHtml = isDone
+                    ? `<span class="dot-done"></span>`
+                    : (isTransit ? `<span class="dot-fleet"></span>` : `<span class="dot-hub"></span>`);
+
                 return `
-                    <div onclick="showProvinceDetail('${s.destination}')" class="cursor-pointer bg-[#22201D] border border-[#2C2A26] hover:border-[#44403C] p-3 rounded-lg transition">
-                        <div class="flex justify-between items-center">
-                            <span class="mono font-semibold text-xs text-[#F5F5F4]">${s.tracking_no}</span>
-                            <span class="text-[10px] px-2 py-0.5 rounded border ${badgeClass}">${s.status}</span>
+                    <div class="row-item" onclick="focusItem(${s.coords[0]}, ${s.coords[1]}, '${s.tracking_no}')">
+                        <div class="row-top">
+                            <div class="row-dest">${dotHtml}<span>${s.destination}</span></div>
+                            <span class="status-tag ${tagClass}">${s.status}</span>
                         </div>
-                        <p class="text-xs text-[#D6D3D1] mt-1.5">ปลายทาง: <span class="font-medium text-[#F5F5F4]">${s.destination}</span></p>
-                        <div class="flex justify-between items-center mt-1 text-[11px] text-[#A8A29E]">
-                            <span>ผู้รับ: ${s.receiver}</span>
-                            <span class="mono">${isMoving ? (72 + Math.floor(Math.random()*14)) + ' km/h' : 'สถานีคัดแยก'}</span>
+                        <div class="row-sub">
+                            ผู้รับ: ${receiverName} · รถ: ${plate}
+                            <div class="row-tracking">${s.tracking_no}</div>
                         </div>
                     </div>
                 `;
             }).join('');
-
-            const routesLayer = document.getElementById('routes-layer');
-            const nodesLayer = document.getElementById('nodes-layer');
-            const trucksLayer = document.getElementById('trucks-layer');
-            const drawnProvinces = new Set();
-
-            allShipments.forEach((s, idx) => {
-                const routeObj = HIGHWAYS[s.destination] || { pts: [HUB, { x: 240, y: 290 }], ox: 10, oy: 4 };
-                const pathPts = routeObj.pts;
-                const dest = pathPts[pathPts.length - 1];
-                const isMoving = s.status === 'กำลังจัดส่ง';
-                const color = isMoving ? '#D97706' : (s.status === 'จัดส่งสำเร็จ' ? '#10B981' : '#0EA5E9');
-
-                const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-                polyline.setAttribute("points", pathPts.map(p => `${p.x},${p.y}`).join(" "));
-                polyline.setAttribute("fill", "none");
-                polyline.setAttribute("stroke", color);
-                polyline.setAttribute("stroke-width", isMoving ? "1.8" : "1");
-                polyline.setAttribute("stroke-opacity", isMoving ? "0.85" : "0.35");
-                polyline.setAttribute("stroke-linejoin", "round");
-                routesLayer.appendChild(polyline);
-
-                if (!drawnProvinces.has(s.destination)) {
-                    drawnProvinces.add(s.destination);
-                    const gNode = document.createElementNS("http://www.w3.org/2000/svg", "g");
-                    gNode.setAttribute("class", "province-node");
-                    gNode.onclick = () => showProvinceDetail(s.destination);
-
-                    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                    circle.setAttribute("cx", dest.x);
-                    circle.setAttribute("cy", dest.y);
-                    circle.setAttribute("r", "4.5");
-                    circle.setAttribute("fill", color);
-                    circle.setAttribute("stroke", "#121110");
-                    circle.setAttribute("stroke-width", "1.5");
-                    gNode.appendChild(circle);
-
-                    const labelWidth = s.destination.length * 6.5 + 10;
-                    const bgRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-                    bgRect.setAttribute("x", dest.x + routeObj.ox - 4);
-                    bgRect.setAttribute("y", dest.y + routeObj.oy - 10);
-                    bgRect.setAttribute("width", labelWidth);
-                    bgRect.setAttribute("height", "14");
-                    bgRect.setAttribute("rx", "3");
-                    bgRect.setAttribute("fill", "#121110");
-                    bgRect.setAttribute("stroke", "#3A3732");
-                    bgRect.setAttribute("stroke-width", "0.6");
-                    gNode.appendChild(bgRect);
-
-                    const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                    label.setAttribute("x", dest.x + routeObj.ox);
-                    label.setAttribute("y", dest.y + routeObj.oy);
-                    label.setAttribute("fill", "#F5F5F4");
-                    label.setAttribute("font-size", "9.5");
-                    label.setAttribute("font-weight", "500");
-                    label.textContent = s.destination;
-                    gNode.appendChild(label);
-
-                    nodesLayer.appendChild(gNode);
-                }
-
-                if (isMoving) {
-                    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-                    const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                    dot.setAttribute("r", "4");
-                    dot.setAttribute("fill", "#D97706");
-                    dot.setAttribute("stroke", "#F5F5F4");
-                    dot.setAttribute("stroke-width", "1.5");
-                    g.appendChild(dot);
-                    trucksLayer.appendChild(g);
-
-                    activeTrucks.push({
-                        el: g,
-                        path: pathPts,
-                        progress: (idx * 0.19) % 1,
-                        speed: 0.0022 + (Math.random() * 0.0018)
-                    });
-                }
-            });
-
-            let isPaused = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            window.toggleAnimation = function() {
-                isPaused = !isPaused;
-                const btn = document.getElementById('btn-pause');
-                btn.innerText = isPaused ? 'PLAY' : 'PAUSE';
-                btn.setAttribute('aria-pressed', String(isPaused));
-            };
-
-            setInterval(() => {
-                if (isPaused) return;
-                activeTrucks.forEach(t => {
-                    t.progress += t.speed;
-                    if (t.progress > 1) t.progress = 0;
-                    const pos = getPointAlongPath(t.path, t.progress);
-                    t.el.setAttribute("transform", `translate(${pos.x}, ${pos.y})`);
-                });
-            }, 40);
         }
 
-        initCommandCenter();
+        function focusItem(lat, lng, trackingNo) {
+            map.flyTo([lat, lng], 8, { duration: 0.9 });
+            markersLayer.eachLayer(layer => {
+                if (layer.getPopup && layer.getPopup().getContent().includes(trackingNo)) {
+                    setTimeout(() => layer.openPopup(), 950);
+                }
+            });
+        }
+
+        loadShipments();
     </script>
 </body>
 </html>

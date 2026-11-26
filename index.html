@@ -3,787 +3,515 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CTT LOGISTICS — ระบบบริหารจัดการและติดตามพัสดุ</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Geist+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>CTT Freezone & Logistics — ระบบบริหารจัดการคลังสินค้าและขนส่ง</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'IBM Plex Sans Thai', sans-serif; background-color: #F4F6F9; color: #0F172A; }
-        .mono { font-family: 'Geist Mono', monospace; font-variant-numeric: tabular-nums; }
-        h1, h2, h3 { text-wrap: balance; }
-        @media print {
-            body * { visibility: hidden; }
-            #print-area, #print-area * { visibility: visible; }
-            #print-area { position: fixed; inset: 0; width: 100%; background: #ffffff; padding: 24px; }
+        :root {
+            --bg-white: #FFFFFF;
+            --bg-subtle: #F8FAFC;
+            --border-line: #E2E8F0;
+            --border-strong: #CBD5E1;
+            --ctt-navy: #002B88;
+            --ctt-red: #E10600;
+            --ctt-blue: #1D4ED8;
+            --ctt-green: #15803D;
+            --ink-main: #0F172A;
+            --ink-sub: #475569;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: var(--bg-white);
+            color: var(--ink-main);
+            font-family: 'IBM Plex Sans Thai', sans-serif;
+            line-height: 1.5;
+        }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* Login Screen */
+        .login-wrap {
+            min-height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-subtle);
+            padding: 20px;
+        }
+        .login-card {
+            width: 100%;
+            max-width: 400px;
+            background: var(--bg-white);
+            border: 1px solid var(--border-strong);
+            border-top: 3px solid var(--ctt-red);
+            border-radius: 4px;
+            padding: 32px;
+        }
+        .brand-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+        .brand-ctt { font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 24px; color: var(--ctt-red); }
+        .brand-sub { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; color: var(--ctt-navy); }
+        .form-group { margin-top: 16px; }
+        .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--ink-sub); margin-bottom: 6px; }
+        .input-std {
+            width: 100%;
+            border: 1px solid var(--border-strong);
+            border-radius: 4px;
+            padding: 9px 12px;
+            font-size: 14px;
+            font-family: inherit;
+            background: var(--bg-white);
+        }
+        .input-std:focus { outline: none; border-color: var(--ctt-navy); }
+        .btn-primary {
+            width: 100%;
+            background: var(--ctt-navy);
+            color: #FFFFFF;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .btn-primary:hover { background: #163366; }
+
+        /* Top Navbar */
+        .topbar {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border-line);
+            padding: 0 28px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .nav-left { display: flex; align-items: center; gap: 16px; }
+        .nav-links { display: flex; align-items: center; gap: 8px; }
+        .btn-outline {
+            border: 1px solid var(--border-strong);
+            background: var(--bg-white);
+            color: var(--ink-main);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .btn-outline:hover { border-color: var(--ctt-navy); background: var(--bg-subtle); }
+        .btn-red {
+            background: var(--ctt-red);
+            color: #FFFFFF;
+            border: 1px solid var(--ctt-red);
+            padding: 6px 14px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .role-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            background: #EFF6FF;
+            color: var(--ctt-navy);
+            border: 1px solid #BFDBFE;
+            padding: 3px 8px;
+            border-radius: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Main Layout */
+        .container { max-width: 1280px; margin: 0 auto; padding: 24px 28px; }
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .kpi-card {
+            background: var(--bg-white);
+            border: 1px solid var(--border-line);
+            border-radius: 4px;
+            padding: 18px 20px;
+        }
+        .kpi-label { font-size: 12px; font-weight: 600; color: var(--ink-sub); }
+        .kpi-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--ctt-navy);
+            margin-top: 4px;
+        }
+
+        .section-box {
+            background: var(--bg-white);
+            border: 1px solid var(--border-line);
+            border-radius: 4px;
+            margin-bottom: 24px;
+        }
+        .section-head {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border-line);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .section-title { font-size: 15px; font-weight: 700; color: var(--ctt-navy); }
+        .form-grid {
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th {
+            background: var(--bg-subtle);
+            color: var(--ink-sub);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 11px 16px;
+            border-bottom: 1px solid var(--border-line);
+        }
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-line);
+            font-size: 13px;
+            vertical-align: middle;
+        }
+        tr:hover td { background: var(--bg-subtle); }
+
+        .tag {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 2px;
+        }
+        .tag-fz { background: #EFF6FF; color: var(--ctt-navy); border: 1px solid #BFDBFE; }
+        .tag-transit { background: #FEF2F2; color: var(--ctt-red); border: 1px solid #FECACA; }
+        .tag-done { background: #F0FDF4; color: var(--ctt-green); border: 1px solid #BBF7D0; }
+
+        select.status-select {
+            border: 1px solid var(--border-strong);
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 12px;
+            font-family: inherit;
+            background: var(--bg-white);
+            cursor: pointer;
         }
     </style>
-<style>
-  body.hide-delete-btn button[onclick*="delete"],
-  body.hide-delete-btn .btn-delete-shipment {
-    display: none !important;
-  }
-</style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body>
 
-<!-- RBAC Login Overlay -->
-<div id="loginModal" style="display:none;" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden">
-    <div class="bg-[#003399] px-6 py-5 text-white flex items-center justify-between">
-      <div>
-        <div class="text-xs font-mono uppercase tracking-wider text-blue-200">Enterprise Logistics System</div>
-        <h2 class="text-lg font-bold mt-0.5">CTT LOGISTICS — เข้าสู่ระบบ</h2>
-      </div>
-      <span class="bg-[#DC0000] text-white text-[11px] font-bold px-2.5 py-1 rounded">RBAC v2.5</span>
-    </div>
-    <form id="loginForm" class="p-6 space-y-4">
-      <div>
-        <label class="block text-xs font-semibold text-slate-700 mb-1">ชื่อผู้ใช้งาน (Username)</label>
-        <input type="text" id="loginUser" required placeholder="เช่น admin, shipping01, tracking01"
-          class="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-[#003399]">
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-slate-700 mb-1">รหัสผ่าน (Password)</label>
-        <input type="password" id="loginPass" required placeholder="รหัสผ่านทดสอบ: 123456"
-          class="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-[#003399]">
-      </div>
-      <div id="loginError" class="hidden text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
-      <button type="submit" class="w-full bg-[#003399] hover:bg-blue-800 text-white font-semibold py-2.5 rounded-lg text-sm transition">
-        เข้าสู่ระบบปฏิบัติงาน
-      </button>
-
-      <div class="pt-3 border-t border-slate-100">
-        <p class="text-[11px] text-slate-500 mb-2 font-medium">เข้าสู่ระบบด่วนสำหรับทดสอบตามตำแหน่งงาน (Quick Login):</p>
-        <div class="grid grid-cols-3 gap-2 text-xs">
-          <button type="button" onclick="quickLogin('admin','123456')" class="px-2 py-1.5 rounded border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium">
-            IT Admin
-          </button>
-          <button type="button" onclick="quickLogin('shipping01','123456')" class="px-2 py-1.5 rounded border border-blue-200 bg-blue-50/50 hover:bg-blue-50 text-[#003399] font-medium">
-            ฝ่าย Shipping
-          </button>
-          <button type="button" onclick="quickLogin('tracking01','123456')" class="px-2 py-1.5 rounded border border-red-200 bg-red-50/50 hover:bg-red-50 text-[#DC0000] font-medium">
-            ฝ่าย Tracking
-          </button>
+    <!-- Login View -->
+    <div id="login-view" class="login-wrap">
+        <div class="login-card">
+            <img src="/logo.png" alt="CTT Logistics" style="height:44px;width:auto;display:block;margin-bottom:10px;object-fit:contain;">
+            <p style="font-size:13px;color:#475569;">ระบบบริหารคลังสินค้าเขตปลอดอากรและควบคุมการขนส่ง</p>
+            <form id="login-form">
+                <div class="form-group">
+                    <label class="form-label">ชื่อผู้ใช้งาน (Username)</label>
+                    <input type="text" id="username" class="input-std" placeholder="admin / shipping01 / tracking01" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">รหัสผ่าน (Password)</label>
+                    <input type="password" id="password" class="input-std" placeholder="••••••" required>
+                </div>
+                <button type="submit" class="btn-primary">เข้าสู่ระบบปฏิบัติการ</button>
+            </form>
+            <div style="margin-top:16px;padding-top:14px;border-top:1px solid #E2E8F0;font-size:12px;color:#64748B;">
+                บัญชีทดสอบ: <span class="mono">admin</span> / <span class="mono">shipping01</span> / <span class="mono">tracking01</span> (รหัสผ่าน <span class="mono">123456</span>)<br>
+                <a href="/track" style="color:#E10600;font-weight:600;display:inline-block;margin-top:6px;">ไปหน้าตรวจสอบสถานะพัสดุสำหรับลูกค้า →</a>
+            </div>
         </div>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- User Management Modal (เฉพาะ Admin) -->
-<div id="userAdminModal" class="hidden fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
-  <div class="bg-white rounded-xl shadow-xl border border-slate-200 max-w-2xl w-full p-6 space-y-4">
-    <div class="flex items-center justify-between border-b border-slate-200 pb-3">
-      <h3 class="font-bold text-slate-800">จัดการผู้ใช้งานและสิทธิ์ (RBAC User Management)</h3>
-      <button onclick="document.getElementById('userAdminModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-700 text-sm font-bold">ปิด</button>
     </div>
-    <form id="createUserForm" class="grid grid-cols-1 sm:grid-cols-4 gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
-      <input type="text" id="newUsername" placeholder="Username (อังกฤษ)" required class="px-2.5 py-1.5 border rounded text-xs">
-      <input type="text" id="newFullname" placeholder="ชื่อ-ตำแหน่งพนักงาน" required class="px-2.5 py-1.5 border rounded text-xs">
-      <select id="newRole" class="px-2.5 py-1.5 border rounded text-xs bg-white">
-        <option value="shipping">shipping (ฝ่ายจัดส่ง)</option>
-        <option value="tracking">tracking (ฝ่ายติดตามรถ)</option>
-        <option value="admin">admin (ผู้ดูแลระบบ)</option>
-      </select>
-      <button type="submit" class="bg-[#003399] text-white rounded px-3 py-1.5 text-xs font-semibold hover:bg-blue-800">+ เพิ่มผู้ใช้</button>
-    </form>
-    <div class="overflow-x-auto max-h-60">
-      <table class="w-full text-left text-xs border-collapse">
-        <thead>
-          <tr class="border-b bg-slate-100 text-slate-600">
-            <th class="p-2">Username</th>
-            <th class="p-2">ชื่อพนักงาน</th>
-            <th class="p-2">Role</th>
-            <th class="p-2">สาขา</th>
-          </tr>
-        </thead>
-        <tbody id="userListBody" class="divide-y"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
 
-    <!-- Top Application Bar (White Header to showcase official CTT Red/Blue Logo) -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-            <div class="flex items-center gap-4">
-                <!-- Official CTT LOGISTICS Vector Logo -->
-                <a href="/" class="flex items-center gap-3 focus:outline-none" aria-label="CTT LOGISTICS หน้าหลัก">
-                    <svg class="h-9 w-auto" viewBox="0 0 360 95" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <!-- Red Left C-Stem -->
-                        <path d="M10 32 L44 10 L44 26 L26 38 L26 58 L44 47 L44 65 L10 87 Z" fill="#DC0000"/>
-                        <!-- Blue Interlocking TT -->
-                        <path d="M44 47 L94 14 L94 31 L77 42 L77 87 L61 87 L61 53 L44 65 Z" fill="#003399"/>
-                        <path d="M77 56 L142 14 L142 32 L123 44 L123 87 L106 87 L106 55 L77 74 Z" fill="#003399"/>
-                        <!-- Blocky Wordmark: CTT -->
-                        <path d="M168 26 H192 V34 H178 V41 H192 V49 H168 V26 Z" fill="#003399"/>
-                        <path d="M200 26 H226 V34 H218 V49 H208 V34 H200 V26 Z" fill="#003399"/>
-                        <path d="M234 26 H260 V34 H252 V49 H242 V34 H234 V26 Z" fill="#003399"/>
-                        <!-- Blocky Wordmark: LOGISTICS -->
-                        <text x="167" y="77" fill="#003399" font-family="'Geist Mono', monospace" font-weight="800" font-size="25" letter-spacing="3.5">LOGISTICS</text>
-                    </svg>
-                </a>
-                <div class="hidden md:block h-6 w-px bg-slate-200"></div>
-                <span class="hidden md:inline text-xs font-medium text-slate-500">ระบบบริหารจัดการและติดตามสถานะพัสดุ</span>
+    <!-- Main Dashboard View -->
+    <div id="app-view" style="display:none;">
+        <header class="topbar">
+            <div class="nav-left">
+                <img src="/logo.png" alt="CTT Logistics" style="height:34px;width:auto;display:block;object-fit:contain;">
+                <span class="role-badge" id="user-role-badge">ROLE</span>
+                <span id="user-name-label" style="font-size:13px;color:#475569;"></span>
+            </div>
+            <div class="nav-links">
+                <a href="/live-map" class="btn-red">แผนที่ควบคุมโครงข่าย (Live Map)</a>
+                <a href="/track" target="_blank" class="btn-outline">หน้าลูกค้า (Tracking)</a>
+                <button onclick="exportCSV()" class="btn-outline">ส่งออก CSV</button>
+                <button onclick="logout()" class="btn-outline">ออกจากระบบ</button>
+            </div>
+        </header>
+
+        <main class="container">
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-label">รายการทั้งหมดในระบบ</div>
+                    <div class="kpi-value" id="stat-total">0</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">คงค้างในคลัง Free Zone / รอตรวจปล่อย</div>
+                    <div class="kpi-value" style="color:#1D4ED8;" id="stat-fz">0</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">กำลังขนส่งปลายทาง (In Transit)</div>
+                    <div class="kpi-value" style="color:#E10600;" id="stat-transit">0</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">ส่งมอบสำเร็จแล้ว</div>
+                    <div class="kpi-value" style="color:#15803D;" id="stat-done">0</div>
+                </div>
             </div>
 
-            <nav class="flex items-center gap-2">
-                <a href="/live-map" target="_blank" class="bg-[#003399] hover:bg-[#002266] text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition inline-flex items-center gap-1.5">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-                    แผนที่เดินรถ
-                </a>
-                <a href="/track" target="_blank" class="bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold px-3.5 py-2 rounded-lg transition inline-flex items-center gap-1.5">
-                    <svg class="w-3.5 h-3.5 text-[#DC0000]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                    หน้าเช็กพัสดุลูกค้า
-                </a>
-                <button onclick="exportCSV()" class="bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold px-3.5 py-2 rounded-lg transition inline-flex items-center gap-1.5">
-                    <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                    ส่งออก CSV
-                </button>
-            
-<div id="userProfileBar" class="hidden items-center gap-2 pl-3 ml-2 border-l border-slate-200">
-  <div class="text-right hidden sm:block">
-    <div id="navUserName" class="text-xs font-bold text-slate-800 leading-tight">-</div>
-    <div id="navUserRole" class="text-[10px] font-mono uppercase font-semibold text-[#003399]">-</div>
-  </div>
-  <button id="btnManageUsers" onclick="openUserModal()" class="hidden px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">
-    จัดการผู้ใช้
-  </button>
-  <button onclick="logoutUser()" class="px-2.5 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs font-semibold">
-    ออกระบบ
-  </button>
-</div>
-</nav>
-        </div>
-    </header>
-
-    <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6 flex-grow">
-        <!-- Unified Metrics Strip -->
-        <section aria-label="สรุปสถานะภาพรวม" class="bg-white border border-slate-200 rounded-xl grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
-            <div class="p-4 sm:p-5">
-                <p class="text-xs font-medium text-slate-500">พัสดุทั้งหมดในระบบ</p>
-                <p id="stat-total" class="text-2xl font-bold text-[#003399] mt-1 mono">0</p>
-            </div>
-            <div class="p-4 sm:p-5">
-                <div class="flex items-center gap-1.5">
-                    <span class="w-2 h-2 rounded-full bg-[#003399]"></span>
-                    <p class="text-xs font-medium text-slate-500">รับเข้าระบบ (รอคัดแยก)</p>
+            <!-- Create Form (Hidden for tracking-only role) -->
+            <section class="section-box" id="create-section">
+                <div class="section-head">
+                    <span class="section-title">บันทึกรับสินค้าเข้าคลังเขตปลอดอากร / สร้างใบงานขนส่ง</span>
+                    <span style="font-size:12px;color:#64748B;">สิทธิ์: Shipping & Admin</span>
                 </div>
-                <p id="stat-pending" class="text-2xl font-bold text-slate-900 mt-1 mono">0</p>
-            </div>
-            <div class="p-4 sm:p-5">
-                <div class="flex items-center gap-1.5">
-                    <span class="w-2 h-2 rounded-full bg-[#DC0000]"></span>
-                    <p class="text-xs font-medium text-slate-500">อยู่ระหว่างจัดส่ง</p>
-                </div>
-                <p id="stat-transit" class="text-2xl font-bold text-[#DC0000] mt-1 mono">0</p>
-            </div>
-            <div class="p-4 sm:p-5">
-                <div class="flex items-center gap-1.5">
-                    <span class="w-2 h-2 rounded-full bg-emerald-600"></span>
-                    <p class="text-xs font-medium text-slate-500">จัดส่งสำเร็จแล้ว</p>
-                </div>
-                <p id="stat-delivered" class="text-2xl font-bold text-emerald-700 mt-1 mono">0</p>
-            </div>
-        </section>
-
-        <!-- Asymmetric Bento Analytics -->
-        <section aria-label="รายงานวิเคราะห์ข้อมูล" class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-            <div class="lg:col-span-4 bg-white border border-slate-200 rounded-xl p-5 flex flex-col justify-between">
-                <div>
-                    <h2 class="text-sm font-semibold text-slate-900">สัดส่วนสถานะพัสดุ</h2>
-                    <p class="text-xs text-slate-500 mt-0.5">อัปเดตตามข้อมูลจริงในฐานข้อมูล</p>
-                </div>
-                <div class="h-44 flex items-center justify-center my-3">
-                    <canvas id="statusChart"></canvas>
-                </div>
-            </div>
-            <div class="lg:col-span-8 bg-white border border-slate-200 rounded-xl p-5 flex flex-col justify-between">
-                <div>
-                    <h2 class="text-sm font-semibold text-slate-900">ปริมาณพัสดุแยกตามจังหวัดปลายทาง</h2>
-                    <p class="text-xs text-slate-500 mt-0.5">เปรียบเทียบปริมาณการกระจายสินค้าแต่ละภูมิภาค</p>
-                </div>
-                <div class="h-44 my-3">
-                    <canvas id="destChart"></canvas>
-                </div>
-            </div>
-        </section>
-
-        <!-- Primary Workspace: Split Intake Form + Ledger Table -->
-        <section class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-            <div id="createShipmentCard" class="lg:col-span-4 bg-white border border-slate-200 rounded-xl p-5">
-                <div class="border-b border-slate-200 pb-3.5 mb-4">
-                    <h2 class="text-sm font-semibold text-slate-900">บันทึกรับพัสดุเข้าระบบ</h2>
-                    <p class="text-xs text-slate-500 mt-0.5">ออกหมายเลขติดตามพัสดุอัตโนมัติ</p>
-                </div>
-
-                <form id="shipment-form" class="space-y-3.5">
-                    <div>
-                        <label for="sender" class="block text-xs font-medium text-slate-700 mb-1">ชื่อผู้ส่ง / สาขาต้นทาง</label>
-                        <input type="text" id="sender" required placeholder="ระบุชื่อผู้ส่งหรือบริษัท"
-                               class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#003399]">
+                <form id="create-form" class="form-grid">
+                    <input type="text" id="tracking_no" class="input-std mono" placeholder="เลขพัสดุ (เช่น CTT2026999)" required>
+                    <input type="text" id="customs_doc_no" class="input-std mono" placeholder="เลขที่ใบขนฯ / ใบกำกับคลัง (FZ-2026-...)">
+                    <select id="service_type" class="input-std">
+                        <option value="Free Zone Warehouse">Free Zone Warehouse (คลังปลอดอากร)</option>
+                        <option value="Customs Clearance & Transit">Customs Clearance & Transit (พิธีการศุลกากร)</option>
+                        <option value="Domestic Distribution">Domestic Distribution (กระจายสินค้าในประเทศ)</option>
+                    </select>
+                    <input type="text" id="container_no" class="input-std mono" placeholder="เลขตู้คอนเทนเนอร์ (ถ้ามี)">
+                    <input type="text" id="sender" class="input-std" placeholder="ผู้ส่ง / ผู้นำเข้าต้นทาง" required>
+                    <input type="text" id="receiver" class="input-std" placeholder="ชื่อผู้รับ / บริษัทปลายทาง" required>
+                    <input type="text" id="destination" class="input-std" placeholder="จังหวัดปลายทาง" required>
+                    <div style="display:flex;gap:8px;">
+                        <select id="vehicle_id" class="input-std" style="flex:1;"></select>
+                        <button type="submit" class="btn-primary" style="margin:0;width:auto;padding:0 18px;background:#E10600;">บันทึก</button>
                     </div>
-                    <div>
-                        <label for="receiver" class="block text-xs font-medium text-slate-700 mb-1">ชื่อผู้รับปลายทาง</label>
-                        <input type="text" id="receiver" required placeholder="ระบุชื่อ-นามสกุลผู้รับ"
-                               class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#003399]">
-                    </div>
-                    <div>
-                        <label for="destination" class="block text-xs font-medium text-slate-700 mb-1">จังหวัดปลายทาง</label>
-                        <select id="destination" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#003399]">
-                            <option value="กรุงเทพฯ">กรุงเทพฯ</option>
-                            <option value="นครปฐม">นครปฐม</option>
-                            <option value="ชลบุรี">ชลบุรี</option>
-                            <option value="นครราชสีมา">นครราชสีมา</option>
-                            <option value="ขอนแก่น">ขอนแก่น</option>
-                            <option value="เชียงใหม่">เชียงใหม่</option>
-                            <option value="ภูเก็ต">ภูเก็ต</option>
-                            <option value="สงขลา">สงขลา</option>
-                        </select>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2.5">
-                        <div>
-                            <label for="receiver_phone" class="block text-xs font-medium text-slate-700 mb-1">เบอร์โทรผู้รับ</label>
-                            <input type="tel" id="receiver_phone" placeholder="08X-XXX-XXXX"
-                                   class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#003399]">
-                        </div>
-                        <div>
-                            <label for="weight_kg" class="block text-xs font-medium text-slate-700 mb-1">น้ำหนัก (กก.)</label>
-                            <input type="number" step="0.1" min="0.1" id="weight_kg" value="1.0"
-                                   class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#003399]">
-                        </div>
-                    </div>
-                    <div>
-                        <label for="vehicle_id" class="block text-xs font-medium text-slate-700 mb-1">รถขนส่งที่รับผิดชอบ</label>
-                        <select id="vehicle_id" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#003399]">
-                            <option value="">-- รอจัดสรรรถขนส่ง --</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="w-full bg-[#003399] hover:bg-[#002266] text-white font-semibold text-sm py-2.5 rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#003399]">
-                        ออกเลขพัสดุและบันทึกข้อมูล
-                    </button>
                 </form>
-            </div>
+            </section>
 
-            <div id="shipmentTableCard" class="lg:col-span-8 bg-white border border-slate-200 rounded-xl overflow-hidden">
-                <div class="p-4 sm:px-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/70">
-                    <div>
-                        <h2 class="text-sm font-semibold text-slate-900">รายการพัสดุในระบบ</h2>
-                        <p class="text-xs text-slate-500">กดปุ่ม <kbd class="px-1.5 py-0.5 text-[10px] bg-white border border-slate-300 rounded mono">/</kbd> เพื่อค้นหาอย่างรวดเร็ว</p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <input type="text" id="search-input" placeholder="ค้นหาเลขพัสดุ / ผู้รับ / จังหวัด"
-                               class="px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg w-48 sm:w-56 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#003399]">
-                        <select id="filter-status" class="px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#003399]">
-                            <option value="ALL">ทุกสถานะ</option>
-                            <option value="รับเข้าระบบ">รับเข้าระบบ</option>
-                            <option value="กำลังจัดส่ง">กำลังจัดส่ง</option>
-                            <option value="จัดส่งสำเร็จ">จัดส่งสำเร็จ</option>
-                        </select>
-                    </div>
+            <!-- Shipment Table -->
+            <section class="section-box">
+                <div class="section-head">
+                    <span class="section-title">ทะเบียนควบคุมสินค้าเข้า-ออกคลังและการจัดส่ง</span>
+                    <input type="text" id="search-input" class="input-std" style="width:280px;padding:6px 12px;font-size:13px;" placeholder="ค้นหาเลขพัสดุ, เลขใบขนฯ, ตู้คอนเทนเนอร์...">
                 </div>
-
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
+                <div style="overflow-x:auto;">
+                    <table>
                         <thead>
-                            <tr class="border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">
-                                <th class="py-3 px-4">เลขพัสดุ</th>
-                                <th class="py-3 px-4">ผู้ส่ง → ผู้รับ</th>
-                                <th class="py-3 px-4">ปลายทาง</th>
-                                <th class="py-3 px-4">สถานะ</th>
-                                <th class="py-3 px-4 text-right">จัดการ</th>
+                            <tr>
+                                <th>เลขพัสดุ / ใบขนศุลกากร</th>
+                                <th>ประเภทบริการ</th>
+                                <th>ผู้ส่ง → ผู้รับปลายทาง</th>
+                                <th>รถขนส่ง / ตู้คอนเทนเนอร์</th>
+                                <th>สถานะปัจจุบัน</th>
+                                <th>อัปเดตล่าสุด</th>
+                                <th style="text-align:right;">จัดการ</th>
                             </tr>
                         </thead>
-                        <tbody id="shipment-table-body" class="divide-y divide-slate-200 text-sm">
-                            <tr class="animate-pulse"><td colspan="5" class="py-6 px-4 text-center text-xs text-slate-500">กำลังโหลดข้อมูลจากฐานข้อมูล...</td></tr>
-                        </tbody>
+                        <tbody id="shipment-tbody"></tbody>
                     </table>
                 </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- Shipping Label Print Modal with Official CTT LOGISTICS Logo -->
-    <div id="label-modal" class="hidden fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
-        <div class="bg-white border border-slate-200 rounded-xl max-w-md w-full p-5 space-y-4">
-            <div class="flex justify-between items-center border-b border-slate-200 pb-3">
-                <h3 class="text-sm font-semibold text-slate-900">ตัวอย่างใบปะหน้าพัสดุ (4x6 นิ้ว)</h3>
-                <button onclick="closeLabelModal()" class="text-slate-500 hover:text-slate-900 text-sm px-2 py-1 rounded">ปิด</button>
-            </div>
-            <div id="print-area" class="border-2 border-slate-900 p-4 rounded-lg bg-white text-slate-900">
-                <div class="flex justify-between items-center border-b-2 border-slate-900 pb-3">
-                    <div>
-                        <svg class="h-7 w-auto" viewBox="0 0 360 95" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M10 32 L44 10 L44 26 L26 38 L26 58 L44 47 L44 65 L10 87 Z" fill="#DC0000"/>
-                            <path d="M44 47 L94 14 L94 31 L77 42 L77 87 L61 87 L61 53 L44 65 Z" fill="#003399"/>
-                            <path d="M77 56 L142 14 L142 32 L123 44 L123 87 L106 87 L106 55 L77 74 Z" fill="#003399"/>
-                            <path d="M168 26 H192 V34 H178 V41 H192 V49 H168 V26 Z" fill="#003399"/>
-                            <path d="M200 26 H226 V34 H218 V49 H208 V34 H200 V26 Z" fill="#003399"/>
-                            <path d="M234 26 H260 V34 H252 V49 H242 V34 H234 V26 Z" fill="#003399"/>
-                            <text x="167" y="77" fill="#003399" font-family="'Geist Mono', monospace" font-weight="800" font-size="25" letter-spacing="3.5">LOGISTICS</text>
-                        </svg>
-                        <p class="text-[11px] text-slate-600 mt-1">ศูนย์กระจายสินค้านครปฐม (HUB-NPT)</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-[10px] uppercase text-slate-500">ปลายทาง</p>
-                        <p id="lbl-dest" class="text-lg font-bold text-[#003399]"></p>
-                    </div>
-                </div>
-                <div class="py-3 border-b border-dashed border-slate-900 flex justify-between items-center gap-3">
-                    <div class="space-y-1 text-xs">
-                        <p><span class="text-slate-500">ผู้ส่ง:</span> <span id="lbl-sender" class="font-medium"></span></p>
-                        <p><span class="text-slate-500">ผู้รับ:</span> <span id="lbl-receiver" class="font-bold text-sm"></span></p>
-                        <p class="pt-1 text-[10px] text-slate-500">สแกน QR Code เพื่อติดตามสถานะพัสดุ</p>
-                    </div>
-                    <img id="lbl-qr" src="" alt="QR Code ติดตามพัสดุ" class="w-24 h-24 border border-slate-200 p-1">
-                </div>
-                <div class="pt-2.5 text-center">
-                    <p id="lbl-tracking" class="text-base font-bold tracking-widest mono"></p>
-                </div>
-            </div>
-            <div class="flex justify-end gap-2">
-                <button onclick="closeLabelModal()" class="px-4 py-2 text-xs font-medium border border-slate-300 rounded-lg hover:bg-slate-50">ยกเลิก</button>
-                <button onclick="window.print()" class="px-4 py-2 text-xs font-semibold bg-[#003399] text-white rounded-lg hover:bg-[#002266]">สั่งพิมพ์ใบปะหน้า</button>
-            </div>
-        </div>
+            </section>
+        </main>
     </div>
 
-    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
-
     <script>
+        let currentUser = null;
         let allShipments = [];
-        let statusChartInstance = null;
-        let destChartInstance = null;
 
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            const dotColor = type === 'error' ? 'bg-[#DC0000]' : 'bg-[#003399]';
-            toast.className = 'pointer-events-auto flex items-center gap-2.5 px-4 py-2.5 rounded-lg bg-slate-900 text-white border border-slate-700 shadow-md text-xs transition-all duration-200 translate-y-2 opacity-0';
-            toast.innerHTML = `<span class="w-2 h-2 rounded-full ${dotColor}"></span><span>${message}</span>`;
-            container.appendChild(toast);
-            requestAnimationFrame(() => toast.classList.remove('translate-y-2', 'opacity-0'));
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-2');
-                setTimeout(() => toast.remove(), 250);
-            }, 3000);
+        function getToken() { return sessionStorage.getItem('ctt_token') || ''; }
+
+        async function initApp() {
+            const savedUser = sessionStorage.getItem('ctt_user');
+            if (getToken() && savedUser) {
+                currentUser = JSON.parse(savedUser);
+                showDashboard();
+            }
         }
 
-        document.addEventListener('keydown', (e) => {
-            if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
-                e.preventDefault();
-                document.getElementById('search-input').focus();
-            }
-        });
-
-        
-        async function updateStatusWithLog(trackingNo, newStatus) {
-            const defaultLoc = newStatus === 'กำลังจัดส่ง'
-                ? 'ศูนย์คัดแยกสินค้าหลัก (อยู่ระหว่างนำจ่าย)'
-                : (newStatus === 'จัดส่งสำเร็จ' ? 'ปลายทางผู้รับ (เซ็นรับพัสดุเรียบร้อย)' : 'สาขาต้นทาง CTT Logistics');
-            const locationInput = prompt('อัปเดตสถานะพัสดุ ' + trackingNo + ' เป็น "' + newStatus + '"\nระบุสถานที่เช็กอินปัจจุบัน:', defaultLoc);
-            if (locationInput === null) {
-                fetchShipments();
-                return;
-            }
-            const noteInput = prompt('หมายเหตุเพิ่มเติม (ถ้ามี):', newStatus === 'จัดส่งสำเร็จ' ? 'ผู้รับได้รับพัสดุครบถ้วน' : 'อัปเดตสถานะผ่านระบบปฏิบัติการ CTT');
-            if (noteInput === null) {
-                fetchShipments();
-                return;
-            }
-            const res = await fetch('/api/shipments/' + trackingNo, {
-                method: 'PUT',
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const res = await fetch('/api/login', {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    status: newStatus,
-                    location: locationInput.trim() || defaultLoc,
-                    remark: noteInput.trim()
+                    username: document.getElementById('username').value,
+                    password: document.getElementById('password').value
                 })
             });
-            if (res.ok) {
-                showToast(`อัปเดตสถานะ ${trackingNo} เป็น "${newStatus}" และบันทึก Log แล้ว`);
-            }
-            fetchShipments();
-        }
-
-        async function loadVehiclesDropdown() {
-            try {
-                const res = await fetch('/api/vehicles');
-                if (!res.ok) return;
-                const vehicles = await res.json();
-                const sel = document.getElementById('vehicle_id');
-                if (!sel) return;
-                sel.innerHTML = '<option value="">-- รอจัดสรรรถขนส่ง --</option>' +
-                    vehicles.map(v => `<option value="${v.id}">${v.plate_number || v.plate_no} (${v.vehicle_type} - ${v.driver_name})</option>`).join('');
-            } catch (e) {}
-        }
-        window.addEventListener('DOMContentLoaded', loadVehiclesDropdown);
-
-        async function fetchShipments() {
-            const res = await fetch('/api/shipments');
-            allShipments = await res.json();
-            updateStatsAndCharts();
-            renderTable();
-        }
-
-        function updateStatsAndCharts() {
-            const total = allShipments.length;
-            const pending = allShipments.filter(s => s.status === 'รับเข้าระบบ').length;
-            const transit = allShipments.filter(s => s.status === 'กำลังจัดส่ง').length;
-            const delivered = allShipments.filter(s => s.status === 'จัดส่งสำเร็จ').length;
-
-            document.getElementById('stat-total').innerText = total;
-            document.getElementById('stat-pending').innerText = pending;
-            document.getElementById('stat-transit').innerText = transit;
-            document.getElementById('stat-delivered').innerText = delivered;
-
-            const ctx1 = document.getElementById('statusChart').getContext('2d');
-            if (statusChartInstance) statusChartInstance.destroy();
-            statusChartInstance = new Chart(ctx1, {
-                type: 'doughnut',
-                data: {
-                    labels: ['รับเข้าระบบ', 'กำลังจัดส่ง', 'จัดส่งสำเร็จ'],
-                    datasets: [{
-                        data: [pending, transit, delivered],
-                        backgroundColor: ['#003399', '#DC0000', '#15803D'],
-                        borderWidth: 0
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, cutout: '68%', plugins: { legend: { position: 'bottom', labels: { font: { family: 'IBM Plex Sans Thai', size: 11 } } } } }
-            });
-
-            const destCounts = {};
-            allShipments.forEach(s => { destCounts[s.destination] = (destCounts[s.destination] || 0) + 1; });
-            const ctx2 = document.getElementById('destChart').getContext('2d');
-            if (destChartInstance) destChartInstance.destroy();
-            destChartInstance = new Chart(ctx2, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(destCounts),
-                    datasets: [{
-                        label: 'จำนวนพัสดุ (ชิ้น)',
-                        data: Object.values(destCounts),
-                        backgroundColor: '#003399',
-                        borderRadius: 4,
-                        barThickness: 24
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Geist Mono', size: 11 } }, grid: { color: '#E2E8F0' } },
-                        x: { ticks: { font: { family: 'IBM Plex Sans Thai', size: 11 } }, grid: { display: false } }
-                    }
-                }
-            });
-        }
-
-        function renderTable() {
-            const q = document.getElementById('search-input').value.toLowerCase();
-            const statusFilter = document.getElementById('filter-status').value;
-            const tbody = document.getElementById('shipment-table-body');
-
-            const filtered = allShipments.filter(s => {
-                const matchText = s.tracking_no.toLowerCase().includes(q) || s.receiver.toLowerCase().includes(q) || s.destination.toLowerCase().includes(q);
-                const matchStatus = statusFilter === 'ALL' || s.status === statusFilter;
-                return matchText && matchStatus;
-            });
-
-            if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="py-10 px-4 text-center text-xs text-slate-500">ไม่พบรายการพัสดุที่ตรงกับเงื่อนไขการค้นหา</td></tr>`;
+            if (!res.ok) {
+                const err = await res.json();
+                alert(err.detail || 'เข้าสู่ระบบไม่สำเร็จ');
                 return;
             }
+            const data = await res.json();
+            sessionStorage.setItem('ctt_token', data.token);
+            sessionStorage.setItem('ctt_user', JSON.stringify(data.user));
+            currentUser = data.user;
+            showDashboard();
+        });
 
-            tbody.innerHTML = filtered.map(s => {
-                const badgeStyle = s.status === 'จัดส่งสำเร็จ'
-                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                    : s.status === 'กำลังจัดส่ง'
-                    ? 'bg-red-50 text-[#DC0000] border-red-200'
-                    : 'bg-blue-50 text-[#003399] border-blue-200';
+        function logout() {
+            sessionStorage.clear();
+            location.reload();
+        }
 
+        async function showDashboard() {
+            document.getElementById('login-view').style.display = 'none';
+            document.getElementById('app-view').style.display = 'block';
+            document.getElementById('user-role-badge').textContent = currentUser.role;
+            document.getElementById('user-name-label').textContent = `${currentUser.full_name} · ${currentUser.branch}`;
+
+            if (currentUser.role === 'tracking') {
+                document.getElementById('create-section').style.display = 'none';
+            }
+            await loadVehicles();
+            await loadShipments();
+        }
+
+        async function loadVehicles() {
+            const res = await fetch('/api/vehicles');
+            const list = await res.json();
+            document.getElementById('vehicle_id').innerHTML = list.map(v =>
+                `<option value="${v.id}">${v.plate_number} (${v.driver_name})</option>`
+            ).join('');
+        }
+
+        async function loadShipments() {
+            const res = await fetch('/api/shipments');
+            allShipments = await res.json();
+            renderTable(allShipments);
+            updateKPIs(allShipments);
+        }
+
+        function updateKPIs(list) {
+            document.getElementById('stat-total').textContent = list.length;
+            document.getElementById('stat-done').textContent = list.filter(s => s.status === 'จัดส่งสำเร็จ').length;
+            document.getElementById('stat-transit').textContent = list.filter(s => s.status === 'กำลังจัดส่ง').length;
+            document.getElementById('stat-fz').textContent = list.filter(s => s.status !== 'จัดส่งสำเร็จ' && s.status !== 'กำลังจัดส่ง').length;
+        }
+
+        function renderTable(list) {
+            const tbody = document.getElementById('shipment-tbody');
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:28px;color:#64748B;">ไม่พบรายการข้อมูล</td></tr>`;
+                return;
+            }
+            const statuses = [
+                'รับเข้าคลัง Free Zone',
+                'รอตรวจปล่อยศุลกากร',
+                'ผ่านพิธีการศุลกากร',
+                'กำลังจัดส่ง',
+                'จัดส่งสำเร็จ'
+            ];
+            tbody.innerHTML = list.map(s => {
+                const isAdmin = currentUser && currentUser.role === 'admin';
+                const opts = statuses.map(st => `<option value="${st}" ${s.status === st ? 'selected' : ''}>${st}</option>`).join('');
                 return `
-                    <tr class="hover:bg-slate-50 transition">
-                        <td class="py-3 px-4 font-semibold text-xs mono text-[#003399]">${s.tracking_no}</td>
-                        <td class="py-3 px-4 text-xs">
-                            <span class="text-slate-500">${s.sender}</span>
-                            <span class="mx-1 text-slate-400">→</span>
-                            <span class="font-medium text-slate-900">${s.receiver}</span>
+                    <tr>
+                        <td>
+                            <div class="mono" style="font-weight:700;color:#002B88;">${s.tracking_no}</div>
+                            <div class="mono" style="font-size:11px;color:#64748B;">ใบขนฯ: ${s.customs_doc_no || '-'}</div>
                         </td>
-                        <td class="py-3 px-4 text-xs font-medium text-slate-900">
-                            <div>${s.destination}</div>
-                            ${s.vehicle_plate ? `<div class="text-[11px] font-normal text-slate-500 mt-0.5">${s.vehicle_plate}</div>` : ''}
+                        <td><span class="tag tag-fz">${s.service_type || 'Free Zone Warehouse'}</span></td>
+                        <td>
+                            <div style="font-weight:600;">${s.receiver} (${s.destination})</div>
+                            <div style="font-size:12px;color:#64748B;">จาก: ${s.sender}</div>
                         </td>
-                        <td class="py-3 px-4">
-                            <select onchange="updateStatusWithLog('${s.tracking_no}', this.value)" class="text-xs font-semibold px-2 py-1 rounded-md border ${badgeStyle} focus:outline-none cursor-pointer">
-                                <option value="รับเข้าระบบ" ${s.status === 'รับเข้าระบบ' ? 'selected' : ''}>รับเข้าระบบ</option>
-                                <option value="กำลังจัดส่ง" ${s.status === 'กำลังจัดส่ง' ? 'selected' : ''}>กำลังจัดส่ง</option>
-                                <option value="จัดส่งสำเร็จ" ${s.status === 'จัดส่งสำเร็จ' ? 'selected' : ''}>จัดส่งสำเร็จ</option>
-                            </select>
+                        <td>
+                            <div style="font-weight:600;">${s.plate_number || '-'}</div>
+                            <div class="mono" style="font-size:11px;color:#64748B;">ตู้: ${s.container_no || '-'}</div>
                         </td>
-                        <td class="py-3 px-4 text-right space-x-1.5">
-                            <button onclick="openLabelByTracking('${s.tracking_no}')" class="text-xs font-medium px-2.5 py-1 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 transition">ใบปะหน้า</button>
-                            <button onclick="deleteShipment('${s.tracking_no}')" style="${CURRENT_USER && CURRENT_USER.role === 'admin' ? '' : 'display:none'}" class="btn-delete-shipment text-xs font-medium px-2 py-1 rounded-md text-[#DC0000] hover:bg-red-50 transition">ลบ</button>
+                        <td>
+                            <select class="status-select" onchange="updateStatus('${s.tracking_no}', this.value)">${opts}</select>
+                        </td>
+                        <td style="font-size:12px;color:#64748B;">${new Date(s.updated_at).toLocaleString('th-TH')}</td>
+                        <td style="text-align:right;">
+                            ${isAdmin ? `<button onclick="deleteRow('${s.tracking_no}')" style="color:#E10600;background:none;border:none;font-size:12px;font-weight:600;cursor:pointer;">ลบ</button>` : '<span style="font-size:11px;color:#94A3B8;">-</span>'}
                         </td>
                     </tr>
                 `;
             }).join('');
         }
 
-        document.getElementById('shipment-form').addEventListener('submit', async (e) => {
+        document.getElementById('create-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const vId = document.getElementById('vehicle_id').value;
             const payload = {
-                sender: document.getElementById('sender').value.trim(),
-                receiver: document.getElementById('receiver').value.trim(),
+                tracking_no: document.getElementById('tracking_no').value,
+                customs_doc_no: document.getElementById('customs_doc_no').value,
+                service_type: document.getElementById('service_type').value,
+                container_no: document.getElementById('container_no').value,
+                sender: document.getElementById('sender').value,
+                receiver: document.getElementById('receiver').value,
                 destination: document.getElementById('destination').value,
-                receiver_phone: document.getElementById('receiver_phone').value.trim() || null,
-                weight_kg: parseFloat(document.getElementById('weight_kg').value) || 1.0,
-                vehicle_id: vId ? parseInt(vId) : null
+                vehicle_id: parseInt(document.getElementById('vehicle_id').value)
             };
             const res = await fetch('/api/shipments', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
+                body: JSON.stringify(payload)
             });
-            if (res.ok) {
-                const data = await res.json();
-                e.target.reset();
-                showToast(`บันทึกพัสดุ ${data.tracking_no} เรียบร้อยแล้ว`);
-                fetchShipments();
-            } else {
-                showToast('เกิดข้อผิดพลาดในการบันทึกข้อมูล', 'error');
+            if (!res.ok) {
+                const err = await res.json();
+                alert(err.detail || 'เกิดข้อผิดพลาด');
+                return;
             }
+            e.target.reset();
+            loadShipments();
         });
 
-        async function deleteShipment(trackingNo) {
-            if (!confirm(`ยืนยันการลบรายการพัสดุ ${trackingNo} ออกจากระบบ?`)) return;
-            const res = await fetch(`/api/shipments/${trackingNo}`, { method: 'DELETE' });
-            if (res.ok) {
-                showToast(`ลบรายการ ${trackingNo} เรียบร้อยแล้ว`);
-            }
-            fetchShipments();
+        async function updateStatus(trackingNo, status) {
+            await fetch(`/api/shipments/${trackingNo}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
+                body: JSON.stringify({ status })
+            });
+            loadShipments();
         }
 
-        function openLabelByTracking(trackingNo) {
-            const s = allShipments.find(item => item.tracking_no === trackingNo);
-            if (s) openLabel(s);
+        async function deleteRow(trackingNo) {
+            if (!confirm(`ยืนยันการลบรายการ ${trackingNo}?`)) return;
+            await fetch(`/api/shipments/${trackingNo}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${getToken()}` }
+            });
+            loadShipments();
         }
 
-        function openLabel(s) {
-            document.getElementById('lbl-dest').innerText = s.destination;
-            document.getElementById('lbl-sender').innerText = s.sender;
-            document.getElementById('lbl-receiver').innerText = s.receiver;
-            document.getElementById('lbl-tracking').innerText = s.tracking_no;
-            const trackUrl = `${window.location.origin}/track?id=${s.tracking_no}`;
-            document.getElementById('lbl-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(trackUrl)}`;
-            document.getElementById('label-modal').classList.remove('hidden');
-        }
-
-        function closeLabelModal() { document.getElementById('label-modal').classList.add('hidden'); }
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            const q = e.target.value.toLowerCase();
+            renderTable(allShipments.filter(s =>
+                (s.tracking_no || '').toLowerCase().includes(q) ||
+                (s.customs_doc_no || '').toLowerCase().includes(q) ||
+                (s.container_no || '').toLowerCase().includes(q) ||
+                (s.receiver || '').toLowerCase().includes(q) ||
+                (s.destination || '').toLowerCase().includes(q)
+            ));
+        });
 
         function exportCSV() {
-            const headers = ['Tracking No', 'Sender', 'Receiver', 'Destination', 'Status'];
-            const rows = allShipments.map(s => [s.tracking_no, s.sender, s.receiver, s.destination, s.status]);
-            const csv = '\uFEFF' + [headers, ...rows].map(e => e.join(',')).join('\n');
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = `ctt_shipments_${new Date().toISOString().slice(0,10)}.csv`;
-            a.click();
-            showToast('ส่งออกไฟล์รายงาน CSV เรียบร้อยแล้ว');
+            const headers = ['Tracking No,Customs Doc,Service Type,Container No,Sender,Receiver,Destination,Status,Updated At'];
+            const rows = allShipments.map(s =>
+                `"${s.tracking_no}","${s.customs_doc_no || '-'}","${s.service_type || '-'}","${s.container_no || '-'}","${s.sender}","${s.receiver}","${s.destination}","${s.status}","${s.updated_at}"`
+            );
+            const blob = new Blob(["\uFEFF" + headers.concat(rows).join("\n")], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `ctt_freezone_shipments_${new Date().toISOString().slice(0,10)}.csv`;
+            link.click();
         }
 
-        document.getElementById('search-input').addEventListener('input', renderTable);
-        document.getElementById('filter-status').addEventListener('change', renderTable);
-        fetchShipments();
+        initApp();
     </script>
 
-<script>
-let CURRENT_USER = JSON.parse(sessionStorage.getItem('ctt_user') || 'null');
-let AUTH_TOKEN = sessionStorage.getItem('ctt_token') || '';
-
-const origFetch = window.fetch;
-window.fetch = async (url, options = {}) => {
-  if (typeof url === 'string' && url.startsWith('/api/') && AUTH_TOKEN) {
-    options.headers = { ...(options.headers || {}), 'Authorization': 'Bearer ' + AUTH_TOKEN };
-  }
-  const response = await origFetch(url, options);
-  if (response.status === 401 && url !== '/api/login' && url !== '/api/me') {
-    AUTH_TOKEN = '';
-    CURRENT_USER = null;
-    sessionStorage.removeItem('ctt_token');
-    sessionStorage.removeItem('ctt_user');
-    document.getElementById('loginModal').style.display = 'flex';
-  } else if (!response.ok && typeof url === 'string' && url.startsWith('/api/') && url !== '/api/login' && url !== '/api/me') {
-    const clone = response.clone();
-    clone.json().then(err => {
-      if (err && err.detail) {
-        const msg = Array.isArray(err.detail)
-          ? err.detail.map(d => (d.loc ? d.loc.slice(-1)[0] + ': ' : '') + d.msg).join('\n')
-          : (typeof err.detail === 'object' ? JSON.stringify(err.detail) : err.detail);
-        alert('แจ้งเตือนระบบ:\n' + msg);
-      }
-    }).catch(() => {});
-  }
-  return response;
-};
-
-function checkAuth() {
-  if (!AUTH_TOKEN || !CURRENT_USER) {
-    document.getElementById('loginModal').style.display = 'flex';
-    return;
-  }
-  // แสดงหน้าจอตาม Role ที่จำไว้ทันทีโดยไม่รอ API หน่วง
-  document.getElementById('loginModal').style.display = 'none';
-  applyRoleUI(CURRENT_USER);
-
-  // ตรวจสอบความถูกต้องของ Token เบื้องหลัง
-  fetch('/api/me').then(async res => {
-    if (res.ok) {
-      CURRENT_USER = await res.json();
-      sessionStorage.setItem('ctt_user', JSON.stringify(CURRENT_USER));
-      applyRoleUI(CURRENT_USER);
-    }
-  }).catch(() => {});
-}
-
-function applyRoleUI(user) {
-  const bar = document.getElementById('userProfileBar');
-  bar.classList.remove('hidden');
-  bar.classList.add('flex');
-  document.getElementById('navUserName').textContent = user.full_name;
-  const roleMap = {
-    'admin': 'ADMIN (ผู้ดูแลระบบ)',
-    'shipping': 'SHIPPING (ฝ่ายจัดส่ง)',
-    'tracking': 'TRACKING (ฝ่ายควบคุมรถ)'
-  };
-  document.getElementById('navUserRole').textContent = roleMap[user.role] || user.role;
-
-  if (user.role === 'admin') {
-    document.getElementById('btnManageUsers').classList.remove('hidden');
-  } else {
-    document.getElementById('btnManageUsers').classList.add('hidden');
-  }
-
-  // ควบคุมการแสดงกล่องซ้าย-ขวาด้วย ID โดยตรง
-  const formCard = document.getElementById('createShipmentCard');
-  const tableCard = document.getElementById('shipmentTableCard');
-  if (formCard && tableCard) {
-    if (user.role === 'tracking') {
-      formCard.style.setProperty('display', 'none', 'important');
-      tableCard.classList.remove('lg:col-span-8');
-      tableCard.classList.add('lg:col-span-12');
-    } else {
-      formCard.style.removeProperty('display');
-      tableCard.classList.remove('lg:col-span-12');
-      tableCard.classList.add('lg:col-span-8');
-    }
-  }
-
-  // ซ่อนปุ่มลบสำหรับตำแหน่งที่ไม่ใช่ Admin (ทั้งระดับ CSS และ DOM)
-  if (user.role === 'admin') {
-    document.body.classList.remove('hide-delete-btn');
-  } else {
-    document.body.classList.add('hide-delete-btn');
-  }
-
-  const syncDeleteButtons = () => {
-    document.querySelectorAll('button').forEach(btn => {
-      const txt = btn.textContent.trim();
-      const onclickAttr = btn.getAttribute('onclick') || '';
-      if (txt === 'ลบ' || onclickAttr.includes('delete')) {
-        btn.classList.add('btn-delete-shipment');
-        btn.style.display = (user.role === 'admin') ? '' : 'none';
-      }
-    });
-  };
-  syncDeleteButtons();
-  const tbody = document.querySelector('tbody');
-  if (tbody && !tbody.dataset.rbacObserved) {
-    tbody.dataset.rbacObserved = 'true';
-    new MutationObserver(syncDeleteButtons).observe(tbody, { childList: true, subtree: true });
-  }
-}
-
-async function doLogin(username, password) {
-  const errBox = document.getElementById('loginError');
-  errBox.classList.add('hidden');
-  const res = await origFetch('/api/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password })
-  });
-  const data = await res.json();
-  if (!res.ok) {
-    errBox.textContent = data.detail || 'เข้าสู่ระบบไม่สำเร็จ';
-    errBox.classList.remove('hidden');
-    return;
-  }
-  AUTH_TOKEN = data.token;
-  CURRENT_USER = data.user;
-  sessionStorage.setItem('ctt_token', AUTH_TOKEN);
-  sessionStorage.setItem('ctt_user', JSON.stringify(CURRENT_USER));
-  document.getElementById('loginModal').style.display = 'none';
-  applyRoleUI(CURRENT_USER);
-  if (typeof fetchShipments === 'function') fetchShipments();
-  if (typeof loadVehiclesDropdown === 'function') loadVehiclesDropdown();
-}
-
-function quickLogin(u, p) {
-  document.getElementById('loginUser').value = u;
-  document.getElementById('loginPass').value = p;
-  doLogin(u, p);
-}
-
-document.getElementById('loginForm').addEventListener('submit', (e) => {
-  e.preventDefault();
-  doLogin(document.getElementById('loginUser').value, document.getElementById('loginPass').value);
-});
-
-async function logoutUser() {
-  await fetch('/api/logout', { method: 'POST' });
-  sessionStorage.removeItem('ctt_token');
-  sessionStorage.removeItem('ctt_user');
-  AUTH_TOKEN = '';
-  CURRENT_USER = null;
-  location.reload();
-}
-
-async function openUserModal() {
-  document.getElementById('userAdminModal').classList.remove('hidden');
-  const res = await fetch('/api/users');
-  if (res.ok) {
-    const users = await res.json();
-    document.getElementById('userListBody').innerHTML = users.map(u => `
-      <tr>
-        <td class="p-2 font-mono font-semibold">${u.username}</td>
-        <td class="p-2">${u.full_name}</td>
-        <td class="p-2"><span class="px-2 py-0.5 rounded bg-blue-50 text-[#003399] font-mono text-[11px]">${u.role}</span></td>
-        <td class="p-2 text-slate-500">${u.branch}</td>
-      </tr>
-    `).join('');
-  }
-}
-
-document.getElementById('createUserForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const res = await fetch('/api/users', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      username: document.getElementById('newUsername').value,
-      password: '123456',
-      full_name: document.getElementById('newFullname').value,
-      role: document.getElementById('newRole').value
-    })
-  });
-  if (res.ok) {
-    document.getElementById('newUsername').value = '';
-    document.getElementById('newFullname').value = '';
-    openUserModal();
-  }
-});
-
-checkAuth();
-</script>
+<footer style="border-top:1px solid #E2E8F0;padding:16px 28px;margin-top:40px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#64748B;background:#FFFFFF;">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <img src="/logo.png" alt="CTT Logistics" style="height:24px;width:auto;display:block;object-fit:contain;">
+    <span style="font-weight:600;color:#002B88;">CTT FREEZONE &amp; LOGISTICS CO., LTD.</span>
+  </div>
+  <span>ระบบบริหารจัดการคลังสินค้าเขตปลอดอากรและควบคุมการขนส่ง</span>
+</footer>
 </body>
 </html>

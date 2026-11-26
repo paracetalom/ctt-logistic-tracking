@@ -1,23 +1,16 @@
-# CTT LOGISTICS — Brand & Enterprise Design System (`DESIGN.md`)
+# CTT Logistics — Enterprise Daylight Design System (Pure White & Brand Navy/Red)
 
-## 1. Brand Identity & Color Tokens (Sampled from Official CTT LOGISTICS Logo)
-- **CTT Corporate Blue (`#003399`):** Primary brand color for primary buttons, active states, route lines, and corporate headers. Hover: `#002266`.
-- **CTT Signal Red (`#DC0000`):** Secondary brand accent for origin hub markers, live transit indicators, and high-priority badges.
-- **Light Surface (Operations & Customer Portal):**
-  - Canvas Background: `#F4F6F9` (Cool Architectural Grey)
-  - Elevated Surface / Cards / Tables: `#FFFFFF` (Crisp White — ensures official red/blue logo contrast)
-  - Hairline Border: `#E2E8F0`
-  - Primary Text: `#0F172A`
-  - Secondary Text: `#475569`
-- **Dark Surface (Fleet Map Telemetry):**
-  - Canvas Background: `#0B111E`
-  - Elevated Panel: `#111927`
-  - Hairline Border: `#1E293B`
+## 1. Brand & Daylight Palette
+- **Canvas & Map Background:** `#FFFFFF` (Pure White — crisp, high-readability operational workspace)
+- **Elevated Surface / Hover:** `#F8FAFC` / `#F1F5F9`
+- **Thailand Landmass Fill:** `#0E2347` (CTT Corporate Navy) | **Neighboring Borders:** `#F1F5F9` / `#CBD5E1`
+- **Primary Brand Accent:** `#D9232E` (CTT Crimson Red — Active Fleet, Active Tabs, In-Transit Routes)
+- **Hairline Borders:** `#E2E8F0` (`1px solid` structural dividers, zero drop-shadow clutter)
+- **Ink Primary:** `#0F172A` | **Ink Secondary:** `#475569` | **Ink Muted:** `#64748B`
+- **Semantic Status:** Delivered `#15803D` | In-Transit `#D9232E` | Pending `#1D4ED8`
 
-## 2. Logo Usage Rules
-- Always render the official geometric slanted **CTT** monogram (`#DC0000` left C-stem + `#003399` interlocking TT bars) paired with the blocky **CTT LOGISTICS** wordmark.
-- On light headers, render wordmark in `#003399`. On dark headers, render wordmark in `#FFFFFF` while preserving the `#DC0000` and `#003399` monogram.
-
-## 3. Typography
-- **UI & Thai Sans:** `'IBM Plex Sans Thai', sans-serif`
-- **Tracking Numbers & Telemetry:** `'Geist Mono', monospace` with `tabular-nums`.
+## 2. Typography & Anti-AI-Slop Rules
+- **UI & Thai Body:** `IBM Plex Sans Thai` (400, 500, 600, 700)
+- **Tracking Codes, Plates & Coordinates:** `JetBrains Mono` (tabular-nums)
+- **Strict Prohibitions:** No dark-mode neon orbs, no `backdrop-filter` blur, no text gradients, no emojis in UI controls/headings, and no fake status indicators.
+- **Border Radius:** `4px` on panels/buttons, `2px` on status tags.
