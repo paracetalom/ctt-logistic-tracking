@@ -825,5 +825,122 @@ img[src="/logo.png"] {
         loadShipments();
     </script>
     <div id="rain-overlay"></div>
+
+
+<!-- CTT AI Assistant Floating Chat Widget -->
+<style>
+  #ctt-ai-btn {
+    position: fixed; bottom: 22px; right: 22px; z-index: 9999;
+    background: linear-gradient(135deg, #0f172a, #1e3a8a); color: #fff;
+    border: none; border-radius: 999px; padding: 12px 20px;
+    font-weight: 600; font-size: 14px; cursor: pointer;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.35);
+    display: flex; align-items: center; gap: 8px; transition: transform 0.2s;
+  }
+  #ctt-ai-btn:hover { transform: translateY(-2px); }
+  #ctt-ai-box {
+    position: fixed; bottom: 78px; right: 22px; z-index: 9999;
+    width: 370px; max-width: calc(100vw - 32px); height: 500px; max-height: 75vh;
+    background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0;
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.22);
+    display: none; flex-direction: column; overflow: hidden; font-family: inherit;
+  }
+  #ctt-ai-header {
+    background: linear-gradient(135deg, #0f172a, #1e3a8a); color: #fff;
+    padding: 14px 16px; display: flex; justify-content: space-between; align-items: center;
+  }
+  #ctt-ai-messages {
+    flex: 1; padding: 14px; overflow-y: auto; background: #f8fafc;
+    display: flex; flex-direction: column; gap: 10px; font-size: 13.5px; line-height: 1.5;
+  }
+  .ai-msg-bot {
+    background: #ffffff; color: #1e293b; padding: 10px 13px; border-radius: 12px 12px 12px 2px;
+    border: 1px solid #e2e8f0; align-self: flex-start; max-width: 88%; white-space: pre-wrap;
+  }
+  .ai-msg-user {
+    background: #1d4ed8; color: #ffffff; padding: 10px 13px; border-radius: 12px 12px 2px 12px;
+    align-self: flex-end; max-width: 85%; white-space: pre-wrap;
+  }
+  #ctt-ai-quick {
+    padding: 6px 12px; background: #f1f5f9; border-top: 1px solid #e2e8f0;
+    display: flex; gap: 6px; overflow-x: auto; white-space: nowrap;
+  }
+  .ai-chip {
+    background: #fff; border: 1px solid #cbd5e1; color: #334155;
+    border-radius: 999px; padding: 4px 10px; font-size: 11.5px; cursor: pointer;
+  }
+  .ai-chip:hover { background: #e0e7ff; border-color: #6366f1; }
+  #ctt-ai-form {
+    display: flex; padding: 10px; background: #fff; border-top: 1px solid #e2e8f0; gap: 8px;
+  }
+  #ctt-ai-input {
+    flex: 1; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 12px;
+    font-size: 13.5px; outline: none; color: #0f172a;
+  }
+  #ctt-ai-send {
+    background: #1d4ed8; color: #fff; border: none; border-radius: 8px;
+    padding: 0 14px; font-weight: 600; cursor: pointer;
+  }
+</style>
+
+<button id="ctt-ai-btn" onclick="toggleCttAI()">✨ ผู้ช่วย AI ข้อมูลระบบ</button>
+
+<div id="ctt-ai-box">
+  <div id="ctt-ai-header">
+    <div>
+      <div style="font-weight:700;font-size:14px;">CTT AI Assistant</div>
+      <div style="font-size:11px;opacity:0.85;">เชื่อมต่อฐานข้อมูล MySQL สด</div>
+    </div>
+    <button onclick="toggleCttAI()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">✕</button>
+  </div>
+  <div id="ctt-ai-messages">
+    <div class="ai-msg-bot">สวัสดีครับ! ผมคือผู้ช่วย AI ของ CTT Logistics & Freezone ถามข้อมูลสถานะพัสดุ เลขตู้คอนเทนเนอร์ ใบขนศุลกากร หรือรถขนส่งในระบบได้เลยครับ</div>
+  </div>
+  <div id="ctt-ai-quick">
+    <button class="ai-chip" onclick="sendQuickAI('สรุปสถานะพัสดุทั้งหมดตอนนี้')">📊 สรุปพัสดุทั้งหมด</button>
+    <button class="ai-chip" onclick="sendQuickAI('มีรายการไหนค้างอยู่ที่ Free Zone บ้าง')">🏭 เช็กคลัง Free Zone</button>
+    <button class="ai-chip" onclick="sendQuickAI('รถขนส่งคันไหนกำลังวิ่งอยู่บ้าง')">🚛 สถานะรถขนส่ง</button>
+  </div>
+  <form id="ctt-ai-form" onsubmit="submitCttAI(event)">
+    <input id="ctt-ai-input" type="text" placeholder="พิมพ์คำถามเกี่ยวกับงานในระบบ..." autocomplete="off" />
+    <button id="ctt-ai-send" type="submit">ส่ง</button>
+  </form>
+</div>
+
+<script>
+function toggleCttAI() {
+  const box = document.getElementById("ctt-ai-box");
+  box.style.display = (box.style.display === "flex") ? "none" : "flex";
+}
+function sendQuickAI(text) {
+  document.getElementById("ctt-ai-input").value = text;
+  submitCttAI(new Event("submit"));
+}
+async function submitCttAI(e) {
+  e.preventDefault();
+  const input = document.getElementById("ctt-ai-input");
+  const msg = input.value.trim();
+  if (!msg) return;
+  const box = document.getElementById("ctt-ai-messages");
+  box.innerHTML += `<div class="ai-msg-user">${msg.replace(/</g, "&lt;")}</div>`;
+  input.value = "";
+  const loadingId = "ai-load-" + Date.now();
+  box.innerHTML += `<div id="${loadingId}" class="ai-msg-bot">กำลังดึงข้อมูลจากฐานข้อมูล...</div>`;
+  box.scrollTop = box.scrollHeight;
+  try {
+    const res = await fetch("/api/ai-chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: msg })
+    });
+    const data = await res.json();
+    document.getElementById(loadingId).textContent = res.ok ? data.reply : ("เกิดข้อผิดพลาด: " + (data.detail || "ไม่สามารถเชื่อมต่อ AI ได้"));
+  } catch (err) {
+    document.getElementById(loadingId).textContent = "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้";
+  }
+  box.scrollTop = box.scrollHeight;
+}
+</script>
+
 </body>
 </html>

@@ -534,3 +534,89 @@ def submit_pod_signature(tracking_no: str, payload: PodSignatureRequest):
     finally:
         cursor.close()
         conn.close()
+
+
+# ==========================================
+# CTT AI Assistant (Live MySQL + Gemini 2.5 Flash Lite)
+# ==========================================
+import urllib.request
+import urllib.error
+import time
+
+class AIChatRequest(BaseModel):
+    message: str
+
+@app.post("/api/ai-chat")
+def ai_chat(req: AIChatRequest):
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        raise HTTPException(status_code=500, detail="ยังไม่ได้ตั้งค่า GEMINI_API_KEY ในไฟล์ .env")
+
+    conn = get_db()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM shipments ORDER BY updated_at DESC LIMIT 30")
+            shipments = cursor.fetchall()
+            try:
+                cursor.execute("SELECT * FROM vehicles")
+                vehicles = cursor.fetchall()
+            except Exception:
+                vehicles = []
+            try:
+                cursor.execute("SELECT * FROM shipment_logs ORDER BY created_at DESC LIMIT 20")
+                logs = cursor.fetchall()
+            except Exception:
+                logs = []
+    finally:
+        conn.close()
+
+    system_context = f"""คุณคือ "CTT AI Assistant" ผู้ช่วยอัจฉริยะประจำระบบ CTT Logistics & Freezone Tracking ของบริษัท CTT Logistic
+หน้าที่ของคุณคือตอบคำถามพนักงาน ผู้บริหาร และลูกค้าเกี่ยวกับข้อมูลบริษัท ขั้นตอนการทำงานของคลังสินค้าเขตปลอดอากร (Free Zone) รวมถึงข้อมูลสดของพัสดุ ตู้คอนเทนเนอร์ ใบขนศุลกากร และรถขนส่งในระบบ
+
+[ข้อมูลบริษัทและกระบวนการทำงานหลักของ CTT Logistics & Freezone]
+- บริษัท CTT Logistic ให้บริการโลจิสติกส์ครบวงจรและคลังสินค้าเขตปลอดอากร (Free Zone Warehouse) รองรับการนำเข้า-ส่งออก การจัดเก็บสินค้าปลอดอากร พิธีการศุลกากร และการกระจายสินค้าทั่วประเทศ
+- ขั้นตอนการทำงาน 4 ระยะ:
+  1. รับเข้าคลัง Free Zone (Free Zone Warehouse): บันทึกสินค้าเข้าคลังเขตปลอดอากร อ้างอิงเลขที่ใบขนศุลกากรและเลขตู้คอนเทนเนอร์
+  2. พิธีการศุลกากร (Customs Clearance): ตรวจสอบเอกสารและตรวจปล่อยทางศุลกากร
+  3. มอบหมายรถและเดินรถ (Domestic Distribution): เชื่อมโยงรถหัวลาก/รถบรรทุก พนักงานขับรถ และติดตามเส้นทางผ่านแผนที่ Live Map (OSRM)
+  4. ส่งมอบและยืนยันปลายทาง (e-POD): ผู้รับสแกน QR Code ผ่านมือถือเพื่อเซ็นรับสินค้าอิเล็กทรอนิกส์และเปลี่ยนสถานะเป็น "จัดส่งสำเร็จ"
+
+[ข้อมูลสดจากฐานข้อมูล MySQL ปัจจุบัน]
+- รายการพัสดุล่าสุด ({len(shipments)} รายการ): {json.dumps(shipments, default=str, ensure_ascii=False)}
+- ข้อมูลรถขนส่ง ({len(vehicles)} คัน): {json.dumps(vehicles, default=str, ensure_ascii=False)}
+- ประวัติการเคลื่อนไหวล่าสุด ({len(logs)} รายการ): {json.dumps(logs, default=str, ensure_ascii=False)}
+
+กฎการตอบ:
+- ตอบเป็นภาษาไทยที่สุภาพ กระชับ ชัดเจน และเป็นมืออาชีพ
+- หากถามข้อมูลในระบบ ให้อ้างอิงจากข้อมูลสดด้านบนเท่านั้น ห้ามแต่งเลขพัสดุหรือสถานะขึ้นมาเอง
+- จัดรูปแบบเป็นข้อๆ ให้อ่านง่าย"""
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={api_key}"
+    payload = {
+        "contents": [{
+            "parts": [{"text": f"{system_context}\n\nคำถามจากผู้ใช้งาน: {req.message}"}]
+        }]
+    }
+
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST"
+    )
+
+    last_err = ""
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(request, timeout=25) as resp:
+                res_data = json.loads(resp.read().decode("utf-8"))
+                reply = res_data["candidates"][0]["content"]["parts"][0]["text"]
+                return {"reply": reply}
+        except urllib.error.HTTPError as e:
+            last_err = f"Gemini API Error ({e.code}): {e.read().decode('utf-8', errors='ignore')}"
+            if e.code in (429, 503) and attempt < 2:
+                time.sleep(2)
+                continue
+            raise HTTPException(status_code=502, detail=last_err)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))

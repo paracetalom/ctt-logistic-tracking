@@ -26,3 +26,4 @@ services:
       DB_USER: ctt_user
       DB_PASSWORD: ctt_pass123
       DB_NAME: ctt_logistic
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
