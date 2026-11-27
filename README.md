@@ -74,3 +74,33 @@ python3 test_rbac.py
 4. อนุญาตให้ `tracking` อัปเดตสถานะเป็น `กำลังจัดส่ง` (`PUT /api/shipments/{tracking_no}`) และบันทึกลง `shipment_logs` (HTTP `200`)
 5. ป้องกัน `shipping` แอบยิง API `DELETE /api/shipments/{tracking_no}` ลบพัสดุ (ระบบดีดกลับ HTTP `403`)
 6. อนุญาตให้ `admin` ลบพัสดุทดสอบและล้างข้อมูล Log ที่เกี่ยวข้องผ่าน `ON DELETE CASCADE` (HTTP `200`)
+
+
+---
+
+## คู่มือการเปิด-ปิดระบบ และการเชื่อมต่อผ่านโทรศัพท์มือถือ
+
+### 1. การเริ่มต้นการทำงานของระบบ (เมื่อเปิดเครื่องคอมพิวเตอร์)
+เปิดหน้าต่าง **Ubuntu (WSL2) Terminal** แล้วรันคำสั่งต่อไปนี้เพื่อเริ่มการทำงานของ Web Server และฐานข้อมูล MySQL:
+
+    cd ~/projects/ctt-logistic-tracking
+    sudo docker compose start
+
+เมื่อรันเสร็จแล้ว สามารถเปิดใช้งานหน้าเว็บผ่านเบราว์เซอร์บนคอมพิวเตอร์ได้ที่ `http://localhost:8080`
+
+---
+
+### 2. การเปิดการเชื่อมต่อสำหรับโทรศัพท์มือถือ (กรณีสแกน QR Code แล้วเปิดหน้าเว็บไม่ติด)
+หากต้องการใช้โทรศัพท์มือถือในวง Wi-Fi เดียวกันสแกน QR Code เพื่อเปิดหน้าติดตามพัสดุ (`/track`) และเซ็นรับสินค้า (e-POD) แต่หน้าเว็บเปิดไม่ติด ให้เปิด **Windows PowerShell (Run as Administrator)** แล้วรันคำสั่งเปิดการส่งต่อพอร์ต (Port Forwarding):
+
+    netsh interface portproxy add v4tov4 listenport=8080 listenaddress=0.0.0.0 connectport=8080 connectaddress=127.0.0.1
+
+> **หมายเหตุ:** ตรวจสอบเลข IPv4 ของเครื่องคอมพิวเตอร์ประจำวันด้วยคำสั่ง `ipconfig` ใน PowerShell ให้ตรงกับที่กำหนดไว้ในตัวสร้าง QR Code
+
+---
+
+### 3. การปิดระบบอย่างปลอดภัย (ก่อนปิดเครื่องคอมพิวเตอร์ / เลิกงาน)
+1. **ใน Ubuntu (WSL2) Terminal:** สั่งหยุดการทำงานของ Container เพื่อป้องกันฐานข้อมูลเสียหาย
+   `cd ~/projects/ctt-logistic-tracking && sudo docker compose stop`
+2. **ใน Windows PowerShell (Run as Administrator):** ยกเลิกการส่งต่อพอร์ตเพื่อความปลอดภัยของเครือข่าย
+   `netsh interface portproxy delete v4tov4 listenport=8080 listenaddress=0.0.0.0`
