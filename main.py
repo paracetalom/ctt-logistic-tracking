@@ -1,3 +1,4 @@
+import re
 import os
 import time
 import json
@@ -7,9 +8,33 @@ import base64
 import random
 import pymysql
 from typing import Optional
-from fastapi import FastAPI, HTTPException, Header, Depends
+from fastapi import FastAPI, HTTPException, Header, Depends, UploadFile, File
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+
+
+def call_gemini_with_fallback(payload: dict, api_key: str, timeout: int = 30) -> dict:
+    import urllib.request, urllib.error
+    models_env = os.getenv("GEMINI_MODEL_CHAIN", "gemini-3.5-flash-lite,gemini-3.5-flash,gemini-flash-latest")
+    models = [m.strip() for m in models_env.split(",") if m.strip()]
+    last_err = "Unknown Gemini Error"
+    for model in models:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                print(f"[GEMINI AI] Success using model: {model}", flush=True)
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode("utf-8", errors="ignore")
+            last_err = f"({model} -> {e.code}): {err_body}"
+            if e.code in (404, 429, 500, 502, 503, 504):
+                continue
+            raise HTTPException(status_code=502, detail=f"Gemini API Error {last_err}")
+        except Exception as e:
+            last_err = f"({model}): {str(e)}"
+            continue
+    raise HTTPException(status_code=502, detail=f"โมเดล AI ทั้งหมดไม่พร้อมใช้งานชั่วคราว: {last_err}")
 
 app = FastAPI(title="CTT Logistic Tracking Enterprise API (RBAC)")
 
@@ -103,7 +128,7 @@ def init_db():
 
                 for col_sql in [
                     "ALTER TABLE shipments ADD COLUMN customs_doc_no VARCHAR(80) DEFAULT NULL",
-                    "ALTER TABLE shipments ADD COLUMN service_type VARCHAR(80) DEFAULT 'Free Zone Warehouse'",
+                    "ALTER TABLE shipments ADD COLUMN service_type VARCHAR(80) DEFAULT 'Warehouse Hub (คลังศาลายา) Warehouse'",
                     "ALTER TABLE shipments ADD COLUMN container_no VARCHAR(50) DEFAULT NULL",
                 ]:
                     try:
@@ -145,7 +170,7 @@ class LoginRequest(BaseModel):
 class ShipmentCreate(BaseModel):
     tracking_no: Optional[str] = None
     customs_doc_no: Optional[str] = None
-    service_type: Optional[str] = "Free Zone Warehouse"
+    service_type: Optional[str] = "Warehouse Hub (คลังศาลายา) Warehouse"
     container_no: Optional[str] = None
     sender: str
     receiver: str
@@ -546,77 +571,478 @@ import time
 class AIChatRequest(BaseModel):
     message: str
 
+
+
+def get_optional_user(authorization: Optional[str] = Header(None)) -> Optional[dict]:
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    token = authorization.split(" ", 1)[1].strip()
+    if not token:
+        return None
+    try:
+        parts = token.split(".")
+        if len(parts) != 2:
+            return None
+        payload_b64, sig = parts
+        expected_sig = hmac.new(SECRET_KEY, payload_b64.encode("utf-8"), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(sig, expected_sig):
+            return None
+        data = json.loads(base64.urlsafe_b64decode(payload_b64 + "==").decode("utf-8"))
+        return data
+    except Exception:
+        return None
+
+class AiChatRequest(BaseModel):
+    message: str
+    session_id: Optional[str] = "guest_default"
+
 @app.post("/api/ai-chat")
-def ai_chat(req: AIChatRequest):
+def ai_chat(req: AiChatRequest, user: Optional[dict] = Depends(get_optional_user)):
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
-        raise HTTPException(status_code=500, detail="ยังไม่ได้ตั้งค่า GEMINI_API_KEY ในไฟล์ .env")
+        raise HTTPException(status_code=500, detail="ไม่พบ GEMINI_API_KEY ในระบบ")
+
+    user_msg = (req.message or "").strip()
+    if not user_msg:
+        raise HTTPException(status_code=400, detail="กรุณาพิมพ์ข้อความ")
+
+    # ระบุตัวตนผู้ใช้งาน (ถ้า Login ใช้ user_<id> ถ้าเป็นลูกค้าทั่วไปใช้ session_id)
+    if user and user.get("id"):
+        mem_key = f"user_{user['id']}"
+        user_profile = f"ชื่อผู้ใช้งาน: {user.get('full_name', user.get('username'))} | บทบาท (Role): {user.get('role')} | สาขา: {user.get('branch', 'สำนักงานใหญ่')}"
+        is_staff = True
+    else:
+        safe_sess = re.sub(r"[^a-zA-Z0-9_-]", "", req.session_id or "guest")[:40] or "guest"
+        mem_key = f"guest_{safe_sess}"
+        user_profile = "ผู้ใช้งานภายนอก (ลูกค้าทั่วไป / ยังไม่ได้เข้าสู่ระบบ) — ห้ามเปิดเผยข้อมูลภายในบริษัทหรือรายชื่อลูกค้าอื่น ให้ตอบเฉพาะข้อมูลพัสดุที่ลูกค้าสอบถามตรงๆ"
+        is_staff = False
 
     conn = get_db()
+    history_rows = []
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT * FROM shipments ORDER BY updated_at DESC LIMIT 30")
-            shipments = cursor.fetchall()
-            try:
-                cursor.execute("SELECT * FROM vehicles")
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS ai_chat_logs (
+                    id INT NOT NULL AUTO_INCREMENT,
+                    memory_key VARCHAR(64) NOT NULL,
+                    username VARCHAR(80) DEFAULT 'guest',
+                    role_type VARCHAR(20) NOT NULL,
+                    message TEXT NOT NULL,
+                    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id),
+                    KEY idx_mem_key (memory_key)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+            # ดึงประวัติการคุยล่าสุด 8 ข้อความของคนนี้
+            cursor.execute(
+                "SELECT role_type, message FROM ai_chat_logs WHERE memory_key = %s ORDER BY id DESC LIMIT 8",
+                (mem_key,)
+            )
+            history_rows = list(reversed(cursor.fetchall()))
+
+            # ดึงข้อมูลสดจากระบบ
+            if is_staff:
+                cursor.execute("SELECT tracking_no, customs_doc_no, service_type, container_no, sender, receiver, destination, status, vehicle_id, updated_at FROM shipments ORDER BY updated_at DESC LIMIT 30")
+                shipments = cursor.fetchall()
+                cursor.execute("SELECT id, plate_number, driver_name, vehicle_type, status FROM vehicles")
                 vehicles = cursor.fetchall()
-            except Exception:
+            else:
+                cursor.execute("SELECT tracking_no, destination, status, updated_at FROM shipments ORDER BY updated_at DESC LIMIT 30")
+                shipments = cursor.fetchall()
                 vehicles = []
-            try:
-                cursor.execute("SELECT * FROM shipment_logs ORDER BY created_at DESC LIMIT 20")
-                logs = cursor.fetchall()
-            except Exception:
-                logs = []
     finally:
         conn.close()
 
-    system_context = f"""คุณคือ "CTT AI Assistant" ผู้ช่วยอัจฉริยะประจำระบบ CTT Logistics & Freezone Tracking ของบริษัท CTT Logistic
-หน้าที่ของคุณคือตอบคำถามพนักงาน ผู้บริหาร และลูกค้าเกี่ยวกับข้อมูลบริษัท ขั้นตอนการทำงานของคลังสินค้าเขตปลอดอากร (Free Zone) รวมถึงข้อมูลสดของพัสดุ ตู้คอนเทนเนอร์ ใบขนศุลกากร และรถขนส่งในระบบ
-
-[ข้อมูลบริษัทและกระบวนการทำงานหลักของ CTT Logistics & Freezone]
-- บริษัท CTT Logistic ให้บริการโลจิสติกส์ครบวงจรและคลังสินค้าเขตปลอดอากร (Free Zone Warehouse) รองรับการนำเข้า-ส่งออก การจัดเก็บสินค้าปลอดอากร พิธีการศุลกากร และการกระจายสินค้าทั่วประเทศ
-- ขั้นตอนการทำงาน 4 ระยะ:
-  1. รับเข้าคลัง Free Zone (Free Zone Warehouse): บันทึกสินค้าเข้าคลังเขตปลอดอากร อ้างอิงเลขที่ใบขนศุลกากรและเลขตู้คอนเทนเนอร์
-  2. พิธีการศุลกากร (Customs Clearance): ตรวจสอบเอกสารและตรวจปล่อยทางศุลกากร
-  3. มอบหมายรถและเดินรถ (Domestic Distribution): เชื่อมโยงรถหัวลาก/รถบรรทุก พนักงานขับรถ และติดตามเส้นทางผ่านแผนที่ Live Map (OSRM)
-  4. ส่งมอบและยืนยันปลายทาง (e-POD): ผู้รับสแกน QR Code ผ่านมือถือเพื่อเซ็นรับสินค้าอิเล็กทรอนิกส์และเปลี่ยนสถานะเป็น "จัดส่งสำเร็จ"
-
-[ข้อมูลสดจากฐานข้อมูล MySQL ปัจจุบัน]
-- รายการพัสดุล่าสุด ({len(shipments)} รายการ): {json.dumps(shipments, default=str, ensure_ascii=False)}
-- ข้อมูลรถขนส่ง ({len(vehicles)} คัน): {json.dumps(vehicles, default=str, ensure_ascii=False)}
-- ประวัติการเคลื่อนไหวล่าสุด ({len(logs)} รายการ): {json.dumps(logs, default=str, ensure_ascii=False)}
-
-กฎการตอบ:
-- ตอบเป็นภาษาไทยที่สุภาพ กระชับ ชัดเจน และเป็นมืออาชีพ
-- หากถามข้อมูลในระบบ ให้อ้างอิงจากข้อมูลสดด้านบนเท่านั้น ห้ามแต่งเลขพัสดุหรือสถานะขึ้นมาเอง
-- จัดรูปแบบเป็นข้อๆ ให้อ่านง่าย"""
-
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={api_key}"
-    payload = {
-        "contents": [{
-            "parts": [{"text": f"{system_context}\n\nคำถามจากผู้ใช้งาน: {req.message}"}]
-        }]
-    }
-
-    request = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST"
+    system_instruction = (
+        "คุณคือ CTT AI Assistant ผู้ช่วยอัจฉริยะประจำระบบ CTT Salaya Park — Warehouse & Logistics Tracking\n"
+        f"ข้อมูลผู้สนทนาปัจจุบัน: {user_profile}\n"
+        "กฎการทำงาน:\n"
+        "1. ทักทายและปรับรูปแบบการตอบให้เหมาะกับบทบาทของผู้สนทนา (หากเป็นพนักงาน/Admin สามารถสรุปข้อมูลเชิงลึกได้ หากเป็นลูกค้าทั่วไปให้ตอบเฉพาะสถานะพัสดุที่ถามอย่างสุภาพ)\n"
+        "2. จดจำบริบทจากประวัติการสนทนาก่อนหน้าของผู้ใช้งานคนนี้ หากถามต่อเนื่องให้เชื่อมโยงคำตอบให้ถูกต้อง\n"
+        "3. ยึดตามข้อมูลสดจากฐานข้อมูลที่แนบให้เท่านั้น ห้ามแต่งเลขพัสดุหรือสถานะขึ้นเอง\n"
+        f"ข้อมูลพัสดุล่าสุดในระบบ: {json.dumps(shipments, default=str, ensure_ascii=False)}\n"
+        f"ข้อมูลรถขนส่งในระบบ: {json.dumps(vehicles, default=str, ensure_ascii=False)}"
     )
 
-    last_err = ""
-    for attempt in range(3):
-        try:
-            with urllib.request.urlopen(request, timeout=25) as resp:
-                res_data = json.loads(resp.read().decode("utf-8"))
-                reply = res_data["candidates"][0]["content"]["parts"][0]["text"]
-                return {"reply": reply}
-        except urllib.error.HTTPError as e:
-            last_err = f"Gemini API Error ({e.code}): {e.read().decode('utf-8', errors='ignore')}"
-            if e.code in (429, 503) and attempt < 2:
-                time.sleep(2)
-                continue
-            raise HTTPException(status_code=502, detail=last_err)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+    contents = [{"role": "user", "parts": [{"text": system_instruction}]}]
+    for h in history_rows:
+        g_role = "user" if h["role_type"] == "user" else "model"
+        contents.append({"role": g_role, "parts": [{"text": h["message"]}]})
+    contents.append({"role": "user", "parts": [{"text": user_msg}]})
+
+    payload = {
+        "contents": contents,
+        "generationConfig": {"temperature": 0.2}
+    }
+
+    res_data = call_gemini_with_fallback(payload, api_key, timeout=30)
+    reply_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
+
+    # บันทึกคำถามและคำตอบลง MySQL แยกตามผู้ใช้งาน
+    conn2 = get_db()
+    try:
+        with conn2.cursor() as cursor:
+            uname = user.get("username", "guest") if user else "guest"
+            cursor.execute("INSERT INTO ai_chat_logs (memory_key, username, role_type, message) VALUES (%s, %s, %s, %s)", (mem_key, uname, "user", user_msg))
+            cursor.execute("INSERT INTO ai_chat_logs (memory_key, username, role_type, message) VALUES (%s, %s, %s, %s)", (mem_key, uname, "assistant", reply_text))
+        conn2.commit()
+    finally:
+        conn2.close()
+
+    return {"reply": reply_text, "user_context": user_profile}
+
+class BatchShipmentItem(BaseModel):
+    tracking_no: Optional[str] = ""
+    customs_doc_no: Optional[str] = ""
+    service_type: Optional[str] = "Warehouse Hub (คลังศาลายา) Warehouse"
+    container_no: Optional[str] = ""
+    sender: str
+    receiver: str
+    destination: str
+    vehicle_id: Optional[int] = 1
+
+class BatchShipmentRequest(BaseModel):
+    items: list[BatchShipmentItem]
+
+@app.post("/api/shipments/batch")
+def create_shipments_batch(payload: BatchShipmentRequest, user: dict = Depends(require_roles(["admin", "shipping"]))):
+    if not payload.items or len(payload.items) > 50:
+        raise HTTPException(status_code=400, detail="จำนวนรายการต้องอยู่ระหว่าง 1 ถึง 50 รายการต่อครั้ง")
+
+    conn = get_db()
+    created_count = 0
+    errors = []
+    try:
+        with conn.cursor() as cursor:
+            for idx, item in enumerate(payload.items, start=1):
+                t_no = (item.tracking_no or "").upper().strip() or f"CTT2026{random.randint(100000, 999999)}"
+                c_doc = (item.customs_doc_no or "").strip() or None
+                s_type = (item.service_type or "").strip() or "Warehouse Hub (คลังศาลายา) Warehouse"
+                cont_no = (item.container_no or "").upper().strip() or None
+                v_id = item.vehicle_id or 1
+
+                try:
+                    validate_shipment_fields(t_no, c_doc or "", cont_no or "", item.sender, item.receiver, item.destination)
+                    cursor.execute(
+                        """INSERT INTO shipments
+                           (tracking_no, customs_doc_no, service_type, container_no, sender, receiver, destination, created_by, vehicle_id)
+                           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                        (t_no, c_doc, s_type, cont_no, item.sender.strip(), item.receiver.strip(), item.destination.strip(), user["id"], v_id)
+                    )
+                    shipment_id = cursor.lastrowid
+                    cursor.execute(
+                        """INSERT INTO shipment_logs (shipment_id, status, location, remark, updated_by)
+                           VALUES (%s, %s, %s, %s, %s)""",
+                        (shipment_id, "รับเข้าระบบ", user.get("branch", "ศูนย์กระจายสินค้านครปฐม"), "นำเข้าแบบกลุ่ม (ผ่านการตรวจสอบแล้ว)", user["id"])
+                    )
+                    created_count += 1
+                except ValueError as ve:
+                    errors.append(f"แถวที่ {idx}: {str(ve)}")
+                except pymysql.err.IntegrityError:
+                    errors.append(f"แถวที่ {idx} ({t_no}): เลขพัสดุซ้ำในระบบ")
+        conn.commit()
+    finally:
+        conn.close()
+
+    if created_count == 0 and errors:
+        raise HTTPException(status_code=400, detail="ไม่สามารถบันทึกได้: " + " | ".join(errors))
+    return {"created": created_count, "errors": errors}
+
+@app.post("/api/ocr-extract")
+async def ocr_extract_document(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_roles(["admin", "shipping"]))
+):
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        raise HTTPException(status_code=500, detail="ไม่พบ GEMINI_API_KEY ในระบบ")
+
+    allowed_mimes = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
+    mime_type = (file.content_type or "").lower()
+    if mime_type not in allowed_mimes:
+        raise HTTPException(status_code=400, detail="รองรับเฉพาะไฟล์รูปภาพ (JPG, PNG, WEBP) และ PDF เท่านั้น")
+
+    content = await file.read()
+    if len(content) == 0 or len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="ขนาดไฟล์ต้องมากกว่า 0 และไม่เกิน 10MB")
+
+    b64_data = base64.b64encode(content).decode("utf-8")
+
+    prompt = (
+        "คุณคือผู้เชี่ยวชาญด้านเอกสารโลจิสติกส์และตรวจสอบและจัดเตรียมสินค้าในคลัง (CTT Salaya Park (คลังสินค้าให้เช่าและศูนย์กระจายสินค้า ในเครือ บริษัท ซี ที ที โลจิสติคส์ จำกัด ตั้งอยู่ ต.กระทุ่มล้ม อ.สามพราน จ.นครปฐม ใกล้ถนนบรมราชชนนี 700 ม. / พุทธมณฑลสาย 5))\n"
+        "จงอ่านเอกสารหรือรูปภาพนี้ (เช่น ใบรับเข้า / ใบส่งของ (DO / Packing List), Bill of Lading, Packing List, ใบส่งของ) "
+        "หากในเอกสารมีหลายตู้คอนเทนเนอร์ หรือหลายรายการจัดส่ง ให้แยกออกมาเป็นรายการย่อยทั้งหมด!\n"
+        "ตอบกลับเป็น JSON ที่มีโครงสร้างดังนี้เท่านั้น (ห้ามมีข้อความอื่นนอก JSON):\n"
+        "{\n"
+        "  \"items\": [\n"
+        "    {\n"
+        "      \"tracking_no\": \"เลขอ้างอิงพัสดุหรือเลข B/L ของรายการนี้ (ถ้าไม่มีให้เว้นว่าง)\",\n"
+        "      \"customs_doc_no\": \"เลขที่ใบรับเข้า / ใบส่งของ (DO / Packing List) เช่น A001-069... หรือเลขใบกำกับคลัง FZ-...\",\n"
+        "      \"container_no\": \"เลขตู้คอนเทนเนอร์ รูปแบบ 4 ตัวอักษรตามด้วย 7 ตัวเลข เช่น MSCU1234567 (ถ้าไม่มีให้เว้นว่าง)\",\n"
+        "      \"sender\": \"ชื่อบริษัทผู้ส่งหรือผู้นำเข้าต้นทาง\",\n"
+        "      \"receiver\": \"ชื่อบริษัทผู้รับหรือลูกค้าปลายทาง\",\n"
+        "      \"destination\": \"จังหวัดหรือสถานที่จัดส่งปลายทาง\"\n"
+        "    }\n"
+        "  ]\n"
+        "}"
+    )
+
+    payload = {
+        "contents": [{
+            "parts": [
+                {"text": prompt},
+                {"inline_data": {"mime_type": mime_type, "data": b64_data}}
+            ]
+        }],
+        "generationConfig": {
+            "temperature": 0.1,
+            "responseMimeType": "application/json"
+        }
+    }
+
+    try:
+        res_data = call_gemini_with_fallback(payload, api_key, timeout=35)
+        if True:
+            raw_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
+            parsed = json.loads(raw_text)
+            if isinstance(parsed, list):
+                return {"items": parsed}
+            if "items" not in parsed:
+                return {"items": [parsed]}
+            return parsed
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", errors="ignore")
+        raise HTTPException(status_code=502, detail=f"Gemini OCR Error ({e.code}): {err_body}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"OCR Process Error: {str(e)}")
+
+# --- Phase 1: CTT Salaya Park Warehouse Module ---
+import os
+import random
+import string
+from datetime import datetime
+from typing import Optional
+import pymysql
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
+warehouse_router = APIRouter(prefix="/api/warehouse", tags=["Warehouse Salaya Park"])
+
+def get_wh_conn():
+    return pymysql.connect(
+        host=os.getenv("DB_HOST", "db"),
+        port=int(os.getenv("DB_PORT", "3306")),
+        user=os.getenv("DB_USER", "root"),
+        password=os.getenv("DB_PASSWORD", "ctt_root_pass"),
+        database=os.getenv("DB_NAME", "ctt_logistic"),
+        charset="utf8mb4",
+        cursorclass=pymysql.cursors.DictCursor,
+        autocommit=True
+    )
+
+def init_warehouse_tables():
+    conn = get_wh_conn()
+    try:
+        with conn.cursor() as cur:
+            # 1. ตารางยูนิตโกดัง CTT Salaya Park (ขนาด 422 - 2,000 ตร.ม.)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS warehouse_units (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    unit_code VARCHAR(30) UNIQUE NOT NULL,
+                    unit_name VARCHAR(120) NOT NULL,
+                    area_sqm INT NOT NULL,
+                    floor_load VARCHAR(50) DEFAULT '2 ตัน/ตร.ม.',
+                    tenant_name VARCHAR(150) DEFAULT 'ว่าง (Available)',
+                    status VARCHAR(30) DEFAULT 'AVAILABLE',
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            """)
+
+            # 2. ตารางสต็อกสินค้าคงคลัง (Warehouse Inventory)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS warehouse_inventory (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    sku VARCHAR(50) NOT NULL,
+                    product_name VARCHAR(200) NOT NULL,
+                    unit_code VARCHAR(30) NOT NULL,
+                    rack_zone VARCHAR(50) NOT NULL,
+                    tenant_name VARCHAR(150) NOT NULL,
+                    quantity INT NOT NULL DEFAULT 0,
+                    unit_type VARCHAR(30) DEFAULT 'พาเลท',
+                    gr_doc_no VARCHAR(80) DEFAULT '',
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            """)
+
+            # ใส่ข้อมูลเริ่มต้นของสาขา CTT Salaya Park หากตารางยังว่างอยู่
+            cur.execute("SELECT COUNT(*) AS cnt FROM warehouse_units")
+            if cur.fetchone()["cnt"] == 0:
+                sample_units = [
+                    ("SP-A1", "โกดัง Salaya Park A1 (พร้อมออฟฟิศ 2 ชั้น)", 422, "2 ตัน/ตร.ม.", "บจก. สยามฟู้ดส์ ดิสทริบิวชั่น", "OCCUPIED"),
+                    ("SP-A2", "โกดัง Salaya Park A2 (พร้อมออฟฟิศ 2 ชั้น)", 650, "2 ตัน/ตร.ม.", "บจก. ไทยเบฟเวอเรจ ซัพพลาย", "OCCUPIED"),
+                    ("SP-B1", "โกดัง Salaya Park B1 (ศูนย์กระจายสินค้าโซนตะวันตก)", 1200, "2 ตัน/ตร.ม.", "บจก. นครปฐม รีเทล โลจิสติกส์", "OCCUPIED"),
+                    ("SP-B2", "โกดัง Salaya Park B2 (พื้นที่ว่างพร้อมเช่า)", 1000, "2 ตัน/ตร.ม.", "ว่าง (Available)", "AVAILABLE"),
+                    ("SP-C1", "โกดัง Salaya Park C1 (คลังขนาดใหญ่รองรับรถเทรลเลอร์)", 2000, "2 ตัน/ตร.ม.", "ว่าง (Available)", "AVAILABLE"),
+                ]
+                cur.executemany(
+                    "INSERT INTO warehouse_units (unit_code, unit_name, area_sqm, floor_load, tenant_name, status) VALUES (%s,%s,%s,%s,%s,%s)",
+                    sample_units
+                )
+
+            cur.execute("SELECT COUNT(*) AS cnt FROM warehouse_inventory")
+            if cur.fetchone()["cnt"] == 0:
+                sample_inv = [
+                    ("SKU-FD101", "น้ำดื่มบรรจุขวด แพ็ค 12 (ล็อตกระจายห้าง)", "SP-A1", "ZONE-A / RACK-01", "บจก. สยามฟู้ดส์ ดิสทริบิวชั่น", 120, "พาเลท", "GR-2026-001"),
+                    ("SKU-FD102", "เครื่องปรุงรสสำเร็จรูป ลังมาตรฐาน", "SP-A1", "ZONE-A / RACK-04", "บจก. สยามฟู้ดส์ ดิสทริบิวชั่น", 85, "พาเลท", "GR-2026-002"),
+                    ("SKU-BV205", "เครื่องดื่มสมุนไพรพร้อมดื่ม 250ml", "SP-A2", "ZONE-B / RACK-02", "บจก. ไทยเบฟเวอเรจ ซัพพลาย", 210, "พาเลท", "GR-2026-005"),
+                    ("SKU-RT309", "สินค้าอุปโภคบริโภคประจำวัน (FMCG)", "SP-B1", "ZONE-C / BAY-01", "บจก. นครปฐม รีเทล โลจิสติกส์", 340, "กล่อง", "GR-2026-008"),
+                ]
+                cur.executemany(
+                    "INSERT INTO warehouse_inventory (sku, product_name, unit_code, rack_zone, tenant_name, quantity, unit_type, gr_doc_no) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
+                    sample_inv
+                )
+    finally:
+        conn.close()
+
+class InboundRequest(BaseModel):
+    sku: str
+    product_name: str
+    unit_code: str
+    rack_zone: str
+    tenant_name: str
+    quantity: int
+    unit_type: str = "พาเลท"
+    gr_doc_no: Optional[str] = ""
+
+class OutboundRequest(BaseModel):
+    inventory_id: int
+    pick_quantity: int
+    do_doc_no: Optional[str] = ""
+    create_shipment: bool = True
+    destination: Optional[str] = "ศูนย์กระจายสินค้าปลายทาง"
+    vehicle_plate: Optional[str] = "70-8421 นครปฐม"
+
+@warehouse_router.get("/units")
+def list_warehouse_units():
+    init_warehouse_tables()
+    conn = get_wh_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM warehouse_units ORDER BY unit_code ASC")
+            units = cur.fetchall()
+            total_sqm = sum(u["area_sqm"] for u in units)
+            occupied_sqm = sum(u["area_sqm"] for u in units if u["status"] == "OCCUPIED")
+            return {
+                "summary": {
+                    "total_units": len(units),
+                    "occupied_units": sum(1 for u in units if u["status"] == "OCCUPIED"),
+                    "available_units": sum(1 for u in units if u["status"] == "AVAILABLE"),
+                    "total_sqm": total_sqm,
+                    "occupied_sqm": occupied_sqm
+                },
+                "units": units
+            }
+    finally:
+        conn.close()
+
+@warehouse_router.get("/inventory")
+def list_warehouse_inventory():
+    init_warehouse_tables()
+    conn = get_wh_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM warehouse_inventory ORDER BY updated_at DESC, id DESC")
+            items = cur.fetchall()
+            return {"total_items": len(items), "items": items}
+    finally:
+        conn.close()
+
+@warehouse_router.post("/inbound")
+def warehouse_inbound(req: InboundRequest):
+    if req.quantity <= 0:
+        raise HTTPException(status_code=400, detail="จำนวนสินค้ารับเข้าต้องมากกว่า 0")
+    init_warehouse_tables()
+    conn = get_wh_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, quantity FROM warehouse_inventory WHERE sku=%s AND unit_code=%s AND rack_zone=%s",
+                (req.sku.strip(), req.unit_code.strip(), req.rack_zone.strip())
+            )
+            existing = cur.fetchone()
+            if existing:
+                new_qty = existing["quantity"] + req.quantity
+                cur.execute(
+                    "UPDATE warehouse_inventory SET quantity=%s, gr_doc_no=%s WHERE id=%s",
+                    (new_qty, req.gr_doc_no or "", existing["id"])
+                )
+                item_id = existing["id"]
+            else:
+                cur.execute(
+                    """INSERT INTO warehouse_inventory
+                       (sku, product_name, unit_code, rack_zone, tenant_name, quantity, unit_type, gr_doc_no)
+                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    (req.sku.strip(), req.product_name.strip(), req.unit_code.strip(),
+                     req.rack_zone.strip(), req.tenant_name.strip(), req.quantity,
+                     req.unit_type.strip(), (req.gr_doc_no or "").strip())
+                )
+                item_id = cur.lastrowid
+            return {"status": "success", "message": "รับสินค้าเข้าคลัง Salaya Park เรียบร้อย", "id": item_id}
+    finally:
+        conn.close()
+
+@warehouse_router.post("/outbound")
+def warehouse_outbound(req: OutboundRequest):
+    if req.pick_quantity <= 0:
+        raise HTTPException(status_code=400, detail="จำนวนเบิกจ่ายต้องมากกว่า 0")
+    init_warehouse_tables()
+    conn = get_wh_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM warehouse_inventory WHERE id=%s", (req.inventory_id,))
+            item = cur.fetchone()
+            if not item:
+                raise HTTPException(status_code=404, detail="ไม่พบรายการสินค้าในคลัง")
+            if item["quantity"] < req.pick_quantity:
+                raise HTTPException(status_code=400, detail=f"สต็อกไม่พอ (คงเหลือ {item['quantity']} {item['unit_type']})")
+
+            remaining = item["quantity"] - req.pick_quantity
+            cur.execute("UPDATE warehouse_inventory SET quantity=%s WHERE id=%s", (remaining, item["id"]))
+
+            created_tracking_no = None
+            if req.create_shipment:
+                rand_code = "".join(random.choices(string.digits, k=6))
+                created_tracking_no = f"CTT-SP-{rand_code}"
+                # ตรวจสอบคอลัมน์ที่มีอยู่ในตาราง shipments เพื่อ insert อย่างปลอดภัย
+                cur.execute("SHOW COLUMNS FROM shipments")
+                cols = [r["Field"] for r in cur.fetchall()]
+                data = {
+                    "tracking_no": created_tracking_no,
+                    "sender_name": f"CTT Salaya Park ({item['unit_code']} - {item['tenant_name']})",
+                    "receiver_name": req.destination or "ลูกค้าปลายทาง",
+                    "origin": "CTT Salaya Park (ศาลายา-นครปฐม)",
+                    "destination": req.destination or "กรุงเทพฯ และปริมณฑล",
+                    "status": "กำลังจัดส่ง",
+                    "service_type": "Warehouse & Distribution",
+                    "customs_doc_no": req.do_doc_no or f"DO-{datetime.now().strftime('%Y%m%d')}",
+                    "container_no": f"WH-{item['sku']}",
+                    "vehicle_plate": req.vehicle_plate or "70-8421 นครปฐม"
+                }
+                valid_cols = [k for k in data.keys() if k in cols]
+                placeholders = ", ".join(["%s"] * len(valid_cols))
+                col_names = ", ".join(valid_cols)
+                cur.execute(
+                    f"INSERT INTO shipments ({col_names}) VALUES ({placeholders})",
+                    [data[k] for k in valid_cols]
+                )
+
+            return {
+                "status": "success",
+                "message": "เบิกจ่ายสินค้าออกจากคลังเรียบร้อย",
+                "remaining_quantity": remaining,
+                "tracking_no": created_tracking_no
+            }
+    finally:
+        conn.close()
+
+app.include_router(warehouse_router)

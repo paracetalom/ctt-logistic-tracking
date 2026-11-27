@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CTT Freezone & Logistics — ศูนย์ควบคุมโครงข่ายและติดตามการเดินรถ</title>
+    <title>CTT Salaya Park — Warehouse & Logistics — ศูนย์ควบคุมโครงข่ายและติดตามการเดินรถ</title>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -386,13 +386,13 @@ img[src="/logo.png"] {
         <div class="floating-filter">
             <button class="filter-btn active" onclick="setFilter('ALL', this)">ทั้งหมด</button>
             <button class="filter-btn" onclick="setFilter('กำลังจัดส่ง', this)">กำลังส่ง</button>
-            <button class="filter-btn" onclick="setFilter('รับเข้าคลัง Free Zone', this)">คลัง FZ</button>
+            <button class="filter-btn" onclick="setFilter('รับสินค้าเข้าคลัง (Inbound Warehouse)', this)">คลัง FZ</button>
             <button class="filter-btn" onclick="setFilter('จัดส่งสำเร็จ', this)">สำเร็จ</button>
             <span class="filter-count" id="location-counter">0 คัน/รายการ</span>
         </div>
 
         <div class="legend-bar">
-            <div class="legend-unit"><span class="dot-hub"></span> คลังสินค้า CTT Free Zone</div>
+            <div class="legend-unit"><span class="dot-hub"></span> คลังสินค้า CTT Warehouse Hub (คลังศาลายา)</div>
             <div class="legend-unit"><span class="dot-fleet"></span> กำลังจัดส่ง (คลิกที่หมุดเพื่อดูข้อมูลรถ)</div>
             <div class="legend-unit"><span class="dot-done"></span> จัดส่งสำเร็จ</div>
         </div>
@@ -669,10 +669,10 @@ img[src="/logo.png"] {
                         </div>
                         <div class="detail-row">
                             <span class="detail-key">ประเภทบริการ</span>
-                            <span class="detail-val">${s.service_type || 'Free Zone Warehouse'}</span>
+                            <span class="detail-val">${s.service_type || 'Warehouse Hub (คลังศาลายา) Warehouse'}</span>
                         </div>
                         <div class="detail-row">
-                            <span class="detail-key">เลขที่ใบขนศุลกากร</span>
+                            <span class="detail-key">เลขที่ใบรับเข้า / ใบเบิกจ่าย (GR / DO No.)</span>
                             <span class="detail-val mono">${s.customs_doc_no || '-'}</span>
                         </div>
                         <div class="detail-row">
@@ -763,16 +763,16 @@ img[src="/logo.png"] {
             worldShifts.forEach(shift => {
                 const hubPt = [BKK_HUB[0], BKK_HUB[1] + shift];
 
-                // หมุดคลังสินค้ากลาง CTT Free Zone ในแต่ละรอบโลก
+                // หมุดคลังสินค้ากลาง CTT Warehouse Hub (คลังศาลายา) ในแต่ละรอบโลก
                 const hubMarker = L.marker(hubPt, { icon: L.divIcon({ className: 'pin-hub', iconSize: [12, 12] }) })
                     .addTo(markersLayer);
                 hubMarker.on('click', (e) => {
                     L.DomEvent.stopPropagation(e);
-                    document.getElementById('drawer-title').textContent = 'สถานีหลัก CTT Free Zone';
+                    document.getElementById('drawer-title').textContent = 'สถานีหลัก CTT Warehouse Hub (คลังศาลายา)';
                     document.getElementById('drawer-body').innerHTML = `
                         <div class="detail-wrap">
                             <div style="font-weight:700;font-size:16px;color:#002B88;margin-bottom:6px;">CTT FREEZONE CENTRAL HUB</div>
-                            <p style="font-size:13px;color:#475569;margin-bottom:14px;">คลังสินค้าเขตปลอดอากร ด่านตรวจปล่อยพิธีการศุลกากร และศูนย์กระจายสินค้าหลัก</p>
+                            <p style="font-size:13px;color:#475569;margin-bottom:14px;">คลังสินค้าและศูนย์กระจายสินค้า (Salaya Park) ด่านตรวจปล่อยตรวจสอบและจัดเตรียมสินค้าในคลัง และศูนย์กระจายสินค้าหลัก</p>
                             <button class="btn-all-list" onclick="openAllList()">ดูรายการสินค้าที่ออกจากคลังนี้</button>
                         </div>
                     `;
@@ -898,7 +898,7 @@ img[src="/logo.png"] {
   </div>
   <div id="ctt-ai-quick">
     <button class="ai-chip" onclick="sendQuickAI('สรุปสถานะพัสดุทั้งหมดตอนนี้')">📊 สรุปพัสดุทั้งหมด</button>
-    <button class="ai-chip" onclick="sendQuickAI('มีรายการไหนค้างอยู่ที่ Free Zone บ้าง')">🏭 เช็กคลัง Free Zone</button>
+    <button class="ai-chip" onclick="sendQuickAI('มีรายการไหนค้างอยู่ที่ Warehouse Hub (คลังศาลายา) บ้าง')">🏭 เช็กคลัง Warehouse Hub (คลังศาลายา)</button>
     <button class="ai-chip" onclick="sendQuickAI('รถขนส่งคันไหนกำลังวิ่งอยู่บ้าง')">🚛 สถานะรถขนส่ง</button>
   </div>
   <form id="ctt-ai-form" onsubmit="submitCttAI(event)">
@@ -928,10 +928,16 @@ async function submitCttAI(e) {
   box.innerHTML += `<div id="${loadingId}" class="ai-msg-bot">กำลังดึงข้อมูลจากฐานข้อมูล...</div>`;
   box.scrollTop = box.scrollHeight;
   try {
+    const aiToken = localStorage.getItem("ctt_token") || localStorage.getItem("token") || "";
+    let aiSess = localStorage.getItem("ctt_ai_sess");
+    if (!aiSess) { aiSess = "sess_" + Math.random().toString(36).slice(2, 10); localStorage.setItem("ctt_ai_sess", aiSess); }
     const res = await fetch("/api/ai-chat", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: msg })
+      headers: {
+        "Content-Type": "application/json",
+        ...(aiToken ? { "Authorization": "Bearer " + aiToken } : {})
+      },
+      body: JSON.stringify({ message: msg, session_id: aiSess })
     });
     const data = await res.json();
     document.getElementById(loadingId).textContent = res.ok ? data.reply : ("เกิดข้อผิดพลาด: " + (data.detail || "ไม่สามารถเชื่อมต่อ AI ได้"));
